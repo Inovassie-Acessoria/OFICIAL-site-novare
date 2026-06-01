@@ -115,7 +115,12 @@ php scripts/sync_xbz.php
 ```
 
 Importa o catálogo da XBZ, agrupa `SKU-COR` em produto-pai + variações (upsert; o que
-some da XBZ vira inativo, nunca é apagado) e regenera o cache.
+some da XBZ vira inativo, nunca é apagado) e regenera o cache. A lógica vive em
+[app/services/CatalogSync.php](app/services/CatalogSync.php), compartilhada entre a CLI e a web.
+
+**Sem acesso a CLI? Use o migrador web** (`public/migrate-web.php`): botão **"2. Importar
+Catálogo REAL da XBZ"** roda exatamente a mesma sincronização pelo navegador. Apague o
+arquivo do servidor depois de usar.
 
 **Cron na Hostinger (1x por semana, segunda 03:00):**
 ```
@@ -146,7 +151,9 @@ some da XBZ vira inativo, nunca é apagado) e regenera o cache.
 php scripts/migrate.php      # cria/atualiza tabelas (banco já criado no hPanel)
 php scripts/sync_xbz.php     # primeira carga do catálogo
 ```
-Depois agende o cron semanal (seção acima).
+**Sem CLI?** Acesse `https://SEU-DOMINIO/migrate-web.php` e clique em **1. Migração** e
+depois **2. Importar Catálogo REAL da XBZ**. **Apague `public/migrate-web.php` do servidor
+em seguida.** Depois agende o cron semanal (seção acima).
 
 ---
 

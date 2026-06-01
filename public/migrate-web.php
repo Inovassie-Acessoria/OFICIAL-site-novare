@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../app/config/env.php';
 require_once __DIR__ . '/../app/config/Database.php';
+require_once __DIR__ . '/../app/services/XBZService.php';
+require_once __DIR__ . '/../app/services/ProductMapper.php';
+require_once __DIR__ . '/../app/services/Cache.php';
+require_once __DIR__ . '/../app/services/CatalogSync.php';
 
 Env::load();
 
@@ -149,6 +153,34 @@ if ($action === 'migrate') {
         }
         $error = "Erro ao semear banco: " . $e->getMessage();
     }
+} elseif ($action === 'sync') {
+    // Importa o catálogo REAL da XBZ (todos os produtos com imagem, preço e
+    // descrição) para o banco. Mesma lógica do cron CLI (CatalogSync), exposta
+    // pela web porque o ambiente do usuário não tem PHP de linha de comando.
+    @set_time_limit(0);
+    @ini_set('memory_limit', '512M');
+
+    try {
+        $stmtCheck = Database::connection()->query("SHOW TABLES LIKE 'produtos'");
+        if (!$stmtCheck->fetch()) {
+            throw new Exception("Tabela 'produtos' não existe. Execute a Migração (passo 1) primeiro.");
+        }
+
+        $xbz = XBZService::fromEnv(); // exige XBZ_API_URL, XBZ_CNPJ e XBZ_TOKEN no .env
+        $resultado = CatalogSync::create()->executar(fn () => $xbz->getListaDeProdutos());
+
+        if ($resultado['ok']) {
+            $c = $resultado['contadores'];
+            $totalPais = ($c['pais_ins'] ?? 0) + ($c['pais_upd'] ?? 0);
+            $totalVar  = ($c['var_ins'] ?? 0) + ($c['var_upd'] ?? 0);
+            $message = "Catálogo XBZ sincronizado! {$totalPais} produtos-pai e {$totalVar} variações no banco "
+                . "(novos: {$c['pais_ins']} pais / {$c['var_ins']} variações). " . $resultado['mensagem'];
+        } else {
+            $error = "Sincronização não concluída: " . $resultado['mensagem'];
+        }
+    } catch (Throwable $e) {
+        $error = "Erro ao sincronizar XBZ: " . $e->getMessage();
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -281,7 +313,11 @@ if ($action === 'migrate') {
         </div>
 
         <a href="?action=migrate" class="btn">1. Executar Migração (Criar Tabelas)</a>
-        <a href="?action=seed" class="btn btn-secondary">2. Popular Banco com Dados de Teste</a>
+        <a href="?action=sync" class="btn btn-secondary"
+           onclick="this.textContent='Sincronizando catálogo XBZ... (pode levar 1-2 min)';this.style.opacity='.7';">
+           2. Importar Catálogo REAL da XBZ
+        </a>
+        <a href="?action=seed" class="btn btn-outline">Alternativa: popular com 6 itens de teste</a>
         <a href="/" class="btn btn-outline">Ir para o Site Inicial</a>
 
         <div class="footer">
