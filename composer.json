@@ -1,0 +1,11 @@
+{
+    "name": "novare/brindes-site",
+    "description": "Site oficial Novare Brindes",
+    "type": "project",
+    "require": {
+        "php": ">=8.1"
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
