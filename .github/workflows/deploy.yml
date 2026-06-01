@@ -1,0 +1,42 @@
+name: Deploy para Hostinger (FTP)
+
+# Publica a branch main na Hostinger via FTP.
+# Configure os segredos no repositório (Settings > Secrets and variables > Actions):
+#   FTP_HOST, FTP_USER, FTP_PASSWORD
+# O .env de PRODUÇÃO deve ser criado MANUALMENTE no servidor (nunca via Git).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # Pasta do projeto no servidor (ajuste conforme a Hostinger).
+          server-dir: ./domains/novarebrindes.com.br/
+          # Nunca enviar segredos, storage local, git, CI e ferramentas de dev.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            .env
+            .env.*
+            storage/cache/**
+            storage/logs/**
+            storage/*.json
+            storage/*.txt
+            tools/**
+            node_modules/**
+            start.bat
+            start.sh

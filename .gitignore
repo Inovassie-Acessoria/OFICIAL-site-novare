@@ -1,0 +1,35 @@
+# === Segredos (NUNCA versionar) ===
+.env
+.env.local
+.env.*.local
+
+# === Dependências ===
+/vendor/
+/node_modules/
+
+# === Cache do catálogo (gerado em runtime) ===
+/storage/cache/*
+!/storage/cache/.gitkeep
+
+# === Logs ===
+/storage/logs/*
+!/storage/logs/.gitkeep
+*.log
+
+# === Amostras / análises da XBZ (dados, não versionar) ===
+/storage/*.json
+/storage/*.txt
+
+# === PHP portátil / ferramentas locais de dev ===
+/tools/php/
+
+# === Uploads temporários ===
+/public/uploads/tmp/
+
+# === SO / editor ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
