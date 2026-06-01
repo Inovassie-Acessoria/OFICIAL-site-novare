@@ -1,0 +1,17 @@
+# ============================================================
+#  Novare Brindes — Redireciona tudo para /public (Hostinger)
+# ============================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Se o arquivo/pasta existe dentro de /public, serve direto
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -d
+    RewriteRule ^(.*)$ /public/$1 [L]
+
+    # Todo o resto vai para /public/index.php (front controller)
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ /public/index.php [L]
+</IfModule>
