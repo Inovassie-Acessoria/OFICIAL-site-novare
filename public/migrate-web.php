@@ -40,13 +40,22 @@ if ($action === 'migrate') {
             throw new Exception("Arquivo schema.sql não encontrado.");
         }
         
+        // Desativa checagem de FK para limpar com segurança
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
+        $pdo->exec("DROP TABLE IF EXISTS imagens;");
+        $pdo->exec("DROP TABLE IF EXISTS variacoes;");
+        $pdo->exec("DROP TABLE IF EXISTS produtos;");
+        $pdo->exec("DROP TABLE IF EXISTS cores;");
+        $pdo->exec("DROP TABLE IF EXISTS sync_runs;");
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
+        
         $statements = split_sql(file_get_contents($sqlFile) ?: '');
         $count = 0;
         foreach ($statements as $sql) {
             $pdo->exec($sql);
             $count++;
         }
-        $message = "Banco de dados configurado com sucesso! {$count} comandos SQL executados.";
+        $message = "Banco de dados configurado com sucesso! As tabelas antigas foram limpas e recriadas. {$count} comandos SQL executados.";
     } catch (Throwable $e) {
         $error = "Erro ao executar migração: " . $e->getMessage();
     }
