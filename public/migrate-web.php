@@ -42,11 +42,14 @@ if ($action === 'migrate') {
         
         // Desativa checagem de FK para limpar com segurança
         $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
-        $pdo->exec("DROP TABLE IF EXISTS imagens;");
-        $pdo->exec("DROP TABLE IF EXISTS variacoes;");
-        $pdo->exec("DROP TABLE IF EXISTS produtos;");
-        $pdo->exec("DROP TABLE IF EXISTS cores;");
-        $pdo->exec("DROP TABLE IF EXISTS sync_runs;");
+        
+        // Busca e dropa TODAS as tabelas existentes de forma dinâmica
+        $stmtTables = $pdo->query("SHOW TABLES");
+        $tables = $stmtTables->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($tables as $table) {
+            $pdo->exec("DROP TABLE IF EXISTS `{$table}`;");
+        }
+        
         $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
         
         $statements = split_sql(file_get_contents($sqlFile) ?: '');
@@ -55,7 +58,7 @@ if ($action === 'migrate') {
             $pdo->exec($sql);
             $count++;
         }
-        $message = "Banco de dados configurado com sucesso! As tabelas antigas foram limpas e recriadas. {$count} comandos SQL executados.";
+        $message = "Banco de dados configurado com sucesso! Todas as tabelas antigas foram limpas e recriadas. {$count} comandos SQL executados.";
     } catch (Throwable $e) {
         $error = "Erro ao executar migração: " . $e->getMessage();
     }
@@ -259,7 +262,7 @@ if ($action === 'migrate') {
 <body>
     <div class="container">
         <div class="logo">Novare Brindes</div>
-        <div class="subtitle">Configurador Web de Banco de Dados</div>
+        <div class="subtitle">Configurador Web de Banco de Dados (v2.0 - Auto-Limpeza)</div>
 
         <?php if ($message): ?>
             <div class="alert alert-success">
