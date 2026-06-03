@@ -20,6 +20,26 @@ $controller = new CatalogController();
 
 try {
     switch (true) {
+        // ---- Painel oculto /settings-admin (sem links no site) ----
+        case $path === '/settings-admin':
+            (new AdminController())->index();
+            break;
+        case $path === '/settings-admin/login':
+            (new AdminController())->login();
+            break;
+        case $path === '/settings-admin/logout':
+            (new AdminController())->logout();
+            break;
+        case $path === '/settings-admin/salvar':
+            (new AdminController())->salvar();
+            break;
+        case $path === '/settings-admin/upload':
+            (new AdminController())->upload();
+            break;
+        case $path === '/settings-admin/sku':
+            (new AdminController())->sku();
+            break;
+
         case $path === '/' || $path === '':
             $controller->home();
             break;

@@ -23,17 +23,18 @@ $img = $p['imagem_principal'] ?? '';
     </div>
     <div class="p-4 flex-grow flex flex-col justify-between">
         <div class="mb-4">
+            <?php if (!empty($p['sku_pai'])): ?>
+                <span class="text-[8px] font-medium text-slate-400 uppercase tracking-widest block mb-0.5">SKU: <?= e($p['sku_pai']) ?></span>
+            <?php endif; ?>
             <?php if (!empty($p['categoria'])): ?>
                 <span class="text-[9px] font-bold text-primary uppercase tracking-widest block mb-1"><?= e($p['categoria']) ?></span>
             <?php endif; ?>
-            <h4 class="text-xs font-bold text-on-surface line-clamp-2 group-hover:text-primary transition-colors leading-snug"><?= e($p['nome']) ?></h4>
+            <h4 class="text-xs font-bold text-on-surface group-hover:text-primary transition-colors leading-snug"><?= e($p['nome']) ?></h4>
         </div>
-        <div class="flex items-end justify-between pt-3 border-t border-surface-container-low">
-            <div class="flex flex-col">
-                <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">a partir de</span>
-                <span class="text-sm font-black text-primary"><?= e(preco($p['preco_base'] ?? 0)) ?></span>
-            </div>
-            <span class="material-symbols-outlined text-primary text-lg opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">arrow_forward</span>
+        <div class="flex items-center justify-between pt-3 border-t border-surface-container-low mt-auto w-full">
+            <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">
+                Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </span>
         </div>
     </div>
 </a>

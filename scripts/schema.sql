@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS produtos (
     sustentavel       TINYINT(1)      NOT NULL DEFAULT 0,
     imagem_principal  VARCHAR(512)    NULL,                     -- thumb denormalizado p/ listagem rápida
     ativo             TINYINT(1)      NOT NULL DEFAULT 1,       -- soft-delete (sync nunca apaga)
+    tags              TEXT            NULL,                     -- tags inteligentes p/ pesquisa
     synced_at         DATETIME        NULL,                     -- marcador da última sync (p/ inativar ausentes)
     created_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -32,7 +33,7 @@ CREATE TABLE IF NOT EXISTS produtos (
     KEY idx_ativo (ativo),
     KEY idx_ativo_categoria (ativo, categoria),               -- consulta comum: ativos por categoria
     KEY idx_synced (synced_at),
-    FULLTEXT KEY ft_busca (nome, descricao)                   -- busca textual em escala
+    FULLTEXT KEY ft_busca (nome, descricao, tags)                   -- busca textual em escala
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
@@ -106,6 +107,32 @@ CREATE TABLE IF NOT EXISTS sync_runs (
     mensagem              TEXT         NULL,
     PRIMARY KEY (id),
     KEY idx_iniciado (iniciado_em)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+--  admin_users  (acesso ao painel oculto /settings-admin)
+--  Senha guardada como hash (password_hash). O admin padrão é semeado
+--  pela aplicação (AdminAuth) no primeiro acesso, caso a tabela esteja vazia.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS admin_users (
+    id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    email      VARCHAR(190)    NOT NULL,
+    senha_hash VARCHAR(255)    NOT NULL,
+    criado_em  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+--  configuracoes  (chave-valor JSON editável pelo painel admin)
+--  Banners, imagens de categorias, rankings "Top", logo e prompt da IA.
+--  É a fonte única lida pelo site (sincronia admin <-> site).
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS configuracoes (
+    chave         VARCHAR(64)  NOT NULL,
+    valor         LONGTEXT     NULL,
+    atualizado_em TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (chave)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------

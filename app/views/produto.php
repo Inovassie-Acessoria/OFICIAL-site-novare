@@ -109,15 +109,15 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                     <span>SKU Ativo: <strong id="sku-ativo" class="text-primary font-bold"><?= e($primeira['sku_completo'] ?? $produto['sku_pai']) ?></strong></span>
                 </div>
 
-                <!-- Preço Estimado -->
+                <!-- Aviso de Orçamento (preço removido — catálogo consultivo) -->
                 <div class="bg-surface-container-low border border-surface-container rounded-2xl p-6 mb-6 shadow-sm">
                     <span class="text-[10px] text-slate-400 uppercase font-extrabold tracking-wider block mb-1">Preço sob consulta</span>
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-3xl font-black text-primary"><?= e(preco($produto['preco_base'] ?? 0)) ?></span>
-                        <span class="text-xs text-slate-400 font-bold">/ a partir de</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-2xl">request_quote</span>
+                        <span class="text-base font-black text-primary tracking-tight">Solicite seu orçamento personalizado</span>
                     </div>
                     <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">
-                        Preço unitário estimado para o lote base. Quanto maior o lote solicitado para sua empresa, menor o preço final unitário.
+                        Valores definidos conforme a quantidade e a personalização do lote. Fale com nosso time pelo WhatsApp para uma cotação rápida e sob medida para a sua empresa.
                     </p>
                 </div>
 
@@ -163,7 +163,7 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
 
             <!-- CTA Stack -->
             <div class="space-y-3 pt-6 border-t border-surface-container/50">
-                <a id="cta-whats" class="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-widest py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all" href="<?= e(whatsappLink(whatsappProduto($produto['nome'], $primeira['cor'] ?? '', $primeira['sku_completo'] ?? $produto['sku_pai'], $urlProduto))) ?>" target="_blank" rel="noopener">
+                <a id="cta-whats" class="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-widest py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all" href="<?= e(whatsappLink(whatsappProduto($produto['nome'], $imgInicial))) ?>" target="_blank" rel="noopener">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.8.9.9-2.7-.2-.3A8 8 0 1 1 12 20zm4.5-5.9c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2.1-.2 0-.3 0-.4l-.8-1.9c-.2-.5-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.7.7-.9 1.7-.6 2.8.5 1.6 1.6 3 3.1 4 .9.5 1.6.8 2.1.9.7.2 1.4.2 1.9.1.6-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1 0-.1-.2-.2-.4-.3z"/></svg>
                     Fazer Orçamento do Brinde
                 </a>

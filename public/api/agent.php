@@ -68,22 +68,39 @@ $matsValidos  = array_column($repo->materiais(), 'material');
 $coresValidas = array_column($repo->cores(), 'cor');
 
 /* ---------- Monta a instrução do sistema ---------- */
-$instrucao = <<<'TXT'
-Você é o assistente consultivo da Novare Brindes (brindes corporativos no Brasil).
-Objetivo: entender a necessidade do cliente e ajudá-lo a encontrar brindes, gerando um lead.
-NUNCA invente produtos. Você apenas decide O QUE buscar; o catálogo real é consultado pelo sistema.
+// Persona/comportamento EDITÁVEL pelo painel admin (com padrão embutido).
+$instrucao = SiteContent::iaPersona();
 
-Faça no máximo 1-2 perguntas curtas de qualificação (ocasião, público, quantidade, orçamento, estilo)
-APENAS se faltar informação essencial. Assim que tiver o suficiente, peça uma busca.
+// Conhecimento extra: arquivos de texto anexados pelo admin (complementam a IA).
+$blocosConhecimento = [];
+foreach (SiteContent::iaArquivos() as $arq) {
+    $nomeArq = basename((string) ($arq['arquivo'] ?? ''));
+    if ($nomeArq === '') {
+        continue;
+    }
+    $caminho = APP_ROOT . '/storage/ia/' . $nomeArq;
+    if (is_file($caminho)) {
+        $conteudo = (string) file_get_contents($caminho, false, null, 0, 8000);
+        if (trim($conteudo) !== '') {
+            $blocosConhecimento[] = '### ' . ($arq['nome'] ?? $nomeArq) . "\n" . $conteudo;
+        }
+    }
+}
+if ($blocosConhecimento) {
+    $instrucao .= "\n\nBASE DE CONHECIMENTO (use como referência ao recomendar):\n"
+        . mb_substr(implode("\n\n", $blocosConhecimento), 0, 12000);
+}
 
-Se o usuário enviar uma imagem ou print de um produto, você deve analisá-la de forma multimodal (cor, material, formato, utilidade do objeto) e traduzir o item visualizado em filtros textuais precisos no JSON de retorno para buscarmos produtos equivalentes em nosso catálogo (por exemplo, preenchendo o termo textual "q" com os termos extraídos do produto visualizado).
+// Formato de resposta — SEMPRE fixado pelo sistema (o admin não pode quebrá-lo).
+$instrucao .= <<<'TXT'
+
 
 Responda SEMPRE e SOMENTE com um JSON puro neste formato:
 {
   "acao": "perguntar" | "buscar",
   "mensagem": "texto curto e cordial em pt-BR",
   "filtros": {
-    "q": "palavras-chave para busca textual",
+    "q": "palavras-chave do produto central pedido pelo cliente",
     "categoria": "uma das categorias válidas ou string vazia",
     "cor": "uma das cores válidas ou vazia",
     "material": "um dos materiais válidos ou vazio",
@@ -92,7 +109,7 @@ Responda SEMPRE e SOMENTE com um JSON puro neste formato:
   }
 }
 TXT;
-// Anexa as listas válidas (fora do nowdoc, para o modelo escolher valores reais).
+// Anexa as listas válidas (para o modelo escolher valores reais).
 $instrucao .= "\nCategorias válidas: " . implode(', ', $catsValidas);
 $instrucao .= "\nCores válidas: " . implode(', ', $coresValidas);
 $instrucao .= "\nMateriais válidos: " . implode(', ', $matsValidos);
@@ -147,7 +164,7 @@ foreach ($res['itens'] as $p) {
         'preco'    => preco($p['preco_base'] ?? 0),
         'imagem'   => $p['imagem_principal'] ?? '',
         'url'      => $urlProd,
-        'whatsapp' => whatsappLink(whatsappProduto($p['nome'], '', $p['sku_pai'], $urlProd)),
+        'whatsapp' => whatsappLink(whatsappProduto($p['nome'], $p['imagem_principal'] ?? '')),
     ];
 }
 

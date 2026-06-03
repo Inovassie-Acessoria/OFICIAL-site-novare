@@ -54,13 +54,13 @@ $hidden = static function (array $f, array $exceto = []) {
                     <h3 class="text-xs uppercase tracking-wider font-extrabold text-on-surface mb-3 border-l-2 border-primary pl-2.5">Categoria</h3>
                     <div class="space-y-1.5 max-h-48 overflow-y-auto pr-2 no-scrollbar">
                         <label class="flex items-center gap-2.5 text-xs text-secondary hover:text-primary cursor-pointer py-1 transition-colors">
-                            <input type="radio" name="categoria" value="" <?= empty($filtros['categoria']) ? 'checked' : '' ?> class="rounded-full border-outline text-primary focus:ring-primary/30 w-4 h-4">
+                            <input type="radio" name="categoria" value="" data-autosubmit <?= empty($filtros['categoria']) ? 'checked' : '' ?> class="rounded-full border-outline text-primary focus:ring-primary/30 w-4 h-4">
                             <span>Todas as Categorias</span>
                         </label>
                         <?php foreach ($categorias as $c): ?>
                             <label class="flex items-center justify-between gap-2 text-xs text-secondary hover:text-primary cursor-pointer py-1 transition-colors">
                                 <span class="flex items-center gap-2.5">
-                                    <input type="radio" name="categoria" value="<?= e($c['categoria']) ?>" <?= ($filtros['categoria'] ?? '') === $c['categoria'] ? 'checked' : '' ?> class="rounded-full border-outline text-primary focus:ring-primary/30 w-4 h-4">
+                                    <input type="radio" name="categoria" value="<?= e($c['categoria']) ?>" data-autosubmit <?= ($filtros['categoria'] ?? '') === $c['categoria'] ? 'checked' : '' ?> class="rounded-full border-outline text-primary focus:ring-primary/30 w-4 h-4">
                                     <span><?= e($c['categoria']) ?></span>
                                 </span>
                                 <span class="text-[10px] text-slate-400 font-bold bg-surface-container-low px-2 py-0.5 rounded-full">(<?= (int) $c['total'] ?>)</span>
@@ -75,12 +75,12 @@ $hidden = static function (array $f, array $exceto = []) {
                     <h3 class="text-xs uppercase tracking-wider font-extrabold text-on-surface mb-3 border-l-2 border-primary pl-2.5">Material</h3>
                     <div class="space-y-1.5 max-h-48 overflow-y-auto pr-2 no-scrollbar">
                         <label class="flex items-center gap-2.5 text-xs text-secondary hover:text-primary cursor-pointer py-1 transition-colors">
-                            <input type="radio" name="material" value="" <?= empty($filtros['material']) ? 'checked' : '' ?> class="rounded-full border-outline text-primary focus:ring-primary/30 w-4 h-4">
+                            <input type="radio" name="material" value="" data-autosubmit <?= empty($filtros['material']) ? 'checked' : '' ?> class="rounded-full border-outline text-primary focus:ring-primary/30 w-4 h-4">
                             <span>Todos os Materiais</span>
                         </label>
                         <?php foreach ($materiais as $mt): ?>
                             <label class="flex items-center gap-2.5 text-xs text-secondary hover:text-primary cursor-pointer py-1 transition-colors">
-                                <input type="radio" name="material" value="<?= e($mt['material']) ?>" <?= ($filtros['material'] ?? '') === $mt['material'] ? 'checked' : '' ?> class="rounded-full border-outline text-primary focus:ring-primary/30 w-4 h-4">
+                                <input type="radio" name="material" value="<?= e($mt['material']) ?>" data-autosubmit <?= ($filtros['material'] ?? '') === $mt['material'] ? 'checked' : '' ?> class="rounded-full border-outline text-primary focus:ring-primary/30 w-4 h-4">
                                 <span><?= e($mt['material']) ?></span>
                             </label>
                         <?php endforeach; ?>
@@ -103,21 +103,11 @@ $hidden = static function (array $f, array $exceto = []) {
                 </div>
                 <?php endif; ?>
 
-                <!-- Preço -->
-                <div>
-                    <h3 class="text-xs uppercase tracking-wider font-extrabold text-on-surface mb-3 border-l-2 border-primary pl-2.5">Faixa de Preço</h3>
-                    <div class="flex items-center gap-2 my-2">
-                        <input type="number" name="preco_min" min="0" step="1" placeholder="Mín" value="<?= e($filtros['preco_min'] ?? '') ?>" class="w-full text-xs border border-surface-container rounded-lg px-3 py-2 bg-surface focus:ring-1 focus:ring-primary/40 focus:bg-white outline-none" aria-label="Preço mínimo">
-                        <span class="text-slate-400 text-xs">até</span>
-                        <input type="number" name="preco_max" min="0" step="1" placeholder="Máx" value="<?= e($filtros['preco_max'] ?? '') ?>" class="w-full text-xs border border-surface-container rounded-lg px-3 py-2 bg-surface focus:ring-1 focus:ring-primary/40 focus:bg-white outline-none" aria-label="Preço máximo">
-                    </div>
-                </div>
-
                 <!-- Sustentabilidade -->
                 <div>
                     <h3 class="text-xs uppercase tracking-wider font-extrabold text-on-surface mb-3 border-l-2 border-primary pl-2.5">Eco-Friendly</h3>
                     <label class="flex items-center gap-2.5 text-xs text-secondary hover:text-primary cursor-pointer py-1 transition-colors">
-                        <input type="checkbox" name="sustentavel" value="1" <?= !empty($filtros['sustentavel']) ? 'checked' : '' ?> class="rounded border-outline text-primary focus:ring-primary/30 w-4 h-4">
+                        <input type="checkbox" name="sustentavel" value="1" data-autosubmit <?= !empty($filtros['sustentavel']) ? 'checked' : '' ?> class="rounded border-outline text-primary focus:ring-primary/30 w-4 h-4">
                         <span class="flex items-center gap-1 font-semibold text-emerald-600">Apenas Ecológicos <span class="material-symbols-outlined text-[14px]">eco</span></span>
                     </label>
                 </div>
@@ -144,7 +134,7 @@ $hidden = static function (array $f, array $exceto = []) {
                     <label class="text-xs text-slate-400 font-semibold uppercase tracking-wider" for="ordenar">Ordenar por:</label>
                     <select name="ordenar" id="ordenar" data-autosubmit class="text-xs border border-surface-container rounded-lg px-3 py-1.5 bg-surface focus:ring-1 focus:ring-primary/30 outline-none cursor-pointer font-medium text-secondary focus:bg-white">
                         <?php
-                        $ops = ['relevancia' => 'Relevância', 'recentes' => 'Novidades', 'preco_asc' => 'Menor preço', 'preco_desc' => 'Maior preço', 'nome' => 'Nome (A–Z)'];
+                        $ops = ['relevancia' => 'Relevância', 'recentes' => 'Novidades', 'nome' => 'Nome (A–Z)'];
                         foreach ($ops as $v => $rotulo):
                         ?>
                             <option value="<?= $v ?>" <?= ($filtros['ordenar'] ?? 'relevancia') === $v ? 'selected' : '' ?>><?= $rotulo ?></option>

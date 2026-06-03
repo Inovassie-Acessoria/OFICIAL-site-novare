@@ -57,17 +57,31 @@ final class ProductRepository
         $dataParams  = $whereParams;
         $orderBy     = self::ORDENACOES[$ordenarChave] ?? self::ORDENACOES['relevancia'];
         if ($boolean !== '') {
-            $matchSelect = ', MATCH(p.nome, p.descricao) AGAINST (:qscore IN BOOLEAN MODE) AS score';
+            $matchSelect = ', MATCH(p.nome, p.descricao, p.tags) AGAINST (:qscore IN BOOLEAN MODE) AS score';
             $dataParams[':qscore'] = $boolean;
             if ($ordenarChave === 'relevancia') {
                 $orderBy = 'score DESC';
             }
         }
 
+        // Imagem ciente da cor: com filtro de cor, o card mostra a foto da
+        // variação naquela cor (e não a imagem principal/cor padrão).
+        $imgSelect = 'p.imagem_principal';
+        if (!empty($f['cor'])) {
+            $imgSelect = "COALESCE(
+                (SELECT i.url FROM variacoes vc
+                 JOIN imagens i ON i.variacao_id = vc.id
+                 WHERE vc.produto_id = p.id AND vc.ativo = 1 AND vc.cor = :cor_img
+                 ORDER BY i.principal DESC, i.ordem ASC LIMIT 1),
+                p.imagem_principal
+            ) AS imagem_principal";
+            $dataParams[':cor_img'] = (string) $f['cor'];
+        }
+
         $chave = 'lst:' . md5(json_encode([$f, $pagina, $porPagina]));
 
         return Cache::remember($chave, self::TTL, function () use (
-            $whereSql, $whereParams, $dataParams, $matchSelect, $orderBy, $porPagina, $offset, $pagina
+            $whereSql, $whereParams, $dataParams, $matchSelect, $imgSelect, $orderBy, $porPagina, $offset, $pagina
         ) {
             // total (apenas params do WHERE)
             $stmtC = $this->pdo->prepare("SELECT COUNT(*) FROM produtos p WHERE {$whereSql}");
@@ -76,7 +90,7 @@ final class ProductRepository
 
             // página de dados ($porPagina/$offset já são inteiros validados)
             $sql = "SELECT p.id, p.sku_pai, p.nome, p.categoria, p.material,
-                           p.preco_base, p.sustentavel, p.imagem_principal {$matchSelect}
+                           p.preco_base, p.sustentavel, {$imgSelect} {$matchSelect}
                     FROM produtos p
                     WHERE {$whereSql}
                     ORDER BY {$orderBy}
@@ -102,23 +116,40 @@ final class ProductRepository
      */
     private function montarFiltros(array $f): array
     {
-        $where  = ['p.ativo = 1'];
-        $params = [];
-        $boolean = '';
+        [$where, $params, $boolean] = $this->construirWhere($f, null);
         $ordenarChave = 'relevancia';
         if (!empty($f['ordenar']) && isset(self::ORDENACOES[$f['ordenar']])) {
             $ordenarChave = (string) $f['ordenar'];
         }
 
-        if (!empty($f['categoria'])) {
+        return [$where, $params, $boolean, $ordenarChave];
+    }
+
+    /**
+     * Constrói o WHERE + params compartilhado entre a listagem e as facetas.
+     *
+     * $excluir permite ignorar uma dimensão (ex.: ao montar a faceta de
+     * "material", excluímos o próprio filtro de material para que a lista
+     * de materiais disponíveis reflita os demais filtros — busca facetada
+     * com eliminação). Produtos sem imagem nunca entram.
+     *
+     * @return array{0:string[],1:array<string,mixed>,2:string}
+     */
+    private function construirWhere(array $f, ?string $excluir = null): array
+    {
+        $where  = ['p.ativo = 1', 'p.imagem_principal IS NOT NULL', "p.imagem_principal <> ''"];
+        $params = [];
+        $boolean = '';
+
+        if ($excluir !== 'categoria' && !empty($f['categoria'])) {
             $where[] = 'p.categoria = :categoria';
             $params[':categoria'] = (string) $f['categoria'];
         }
-        if (!empty($f['material'])) {
+        if ($excluir !== 'material' && !empty($f['material'])) {
             $where[] = 'p.material = :material';
             $params[':material'] = (string) $f['material'];
         }
-        if (!empty($f['sustentavel'])) {
+        if ($excluir !== 'sustentavel' && !empty($f['sustentavel'])) {
             $where[] = 'p.sustentavel = 1';
         }
         if (isset($f['preco_min']) && $f['preco_min'] !== '') {
@@ -133,20 +164,22 @@ final class ProductRepository
             $where[] = '(p.quantidade_minima IS NULL OR p.quantidade_minima <= :qmin)';
             $params[':qmin'] = (int) $f['quantidade_minima'];
         }
-        if (!empty($f['cor'])) {
+        if ($excluir !== 'cor' && !empty($f['cor'])) {
             $where[] = 'EXISTS (SELECT 1 FROM variacoes v WHERE v.produto_id = p.id AND v.ativo = 1 AND v.cor = :cor)';
             $params[':cor'] = (string) $f['cor'];
         }
         if (!empty($f['q'])) {
-            $b = $this->prepararBusca((string) $f['q']);
+            $buscaOriginal = trim((string) $f['q']);
+            $b = $this->prepararBusca($buscaOriginal);
             if ($b !== '') {
-                $where[] = 'MATCH(p.nome, p.descricao) AGAINST (:q IN BOOLEAN MODE)';
+                $where[] = '(p.sku_pai = :sku_exato OR EXISTS (SELECT 1 FROM variacoes v2 WHERE v2.produto_id = p.id AND v2.sku_completo = :sku_exato) OR MATCH(p.nome, p.descricao, p.tags) AGAINST (:q IN BOOLEAN MODE))';
+                $params[':sku_exato'] = $buscaOriginal;
                 $params[':q'] = $b;
                 $boolean = $b;
             }
         }
 
-        return [$where, $params, $boolean, $ordenarChave];
+        return [$where, $params, $boolean];
     }
 
     /**
@@ -228,25 +261,53 @@ final class ProductRepository
         });
     }
 
-    /** Materiais ativos com contagem (filtro). */
-    public function materiais(): array
+    /**
+     * Materiais disponíveis com contagem (faceta).
+     *
+     * Respeita os filtros ativos (categoria, cor, busca, etc.), exceto o
+     * próprio material: ao escolher uma categoria, só aparecem os materiais
+     * que de fato existem nela.
+     *
+     * @param array<string,mixed> $f
+     */
+    public function materiais(array $f = []): array
     {
-        return Cache::remember('mats', self::TTL, function () {
-            $sql = 'SELECT material, COUNT(*) AS total FROM produtos
-                    WHERE ativo = 1 AND material IS NOT NULL AND material <> ""
-                    GROUP BY material ORDER BY total DESC';
-            return $this->pdo->query($sql)->fetchAll();
+        [$where, $params] = $this->construirWhere($f, 'material');
+        $whereSql = implode(' AND ', $where);
+
+        return Cache::remember('mats:' . md5(json_encode($f)), self::TTL, function () use ($whereSql, $params) {
+            $sql = "SELECT p.material AS material, COUNT(*) AS total
+                    FROM produtos p
+                    WHERE {$whereSql} AND p.material IS NOT NULL AND p.material <> ''
+                    GROUP BY p.material ORDER BY total DESC";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll();
         });
     }
 
-    /** Cores ativas com hex e contagem (swatches do filtro). */
-    public function cores(): array
+    /**
+     * Cores disponíveis com hex e contagem (swatches do filtro).
+     *
+     * Respeita os filtros ativos, exceto a própria cor — assim a lista de
+     * cores se restringe ao que existe dentro da categoria/material/busca.
+     *
+     * @param array<string,mixed> $f
+     */
+    public function cores(array $f = []): array
     {
-        return Cache::remember('cores', self::TTL, function () {
-            $sql = 'SELECT cor, MIN(cor_codigo) AS hex, COUNT(DISTINCT produto_id) AS total
-                    FROM variacoes WHERE ativo = 1 AND cor IS NOT NULL AND cor <> ""
-                    GROUP BY cor ORDER BY total DESC';
-            return $this->pdo->query($sql)->fetchAll();
+        [$where, $params] = $this->construirWhere($f, 'cor');
+        $whereSql = implode(' AND ', $where);
+
+        return Cache::remember('cores:' . md5(json_encode($f)), self::TTL, function () use ($whereSql, $params) {
+            $sql = "SELECT v.cor AS cor, MIN(v.cor_codigo) AS hex, COUNT(DISTINCT v.produto_id) AS total
+                    FROM variacoes v
+                    JOIN produtos p ON p.id = v.produto_id
+                    WHERE v.ativo = 1 AND v.cor IS NOT NULL AND v.cor <> '' AND {$whereSql}
+                    GROUP BY v.cor ORDER BY total DESC";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll();
         });
     }
 
@@ -271,9 +332,46 @@ final class ProductRepository
         $limite = max(1, min(24, $limite));
         return Cache::remember("dest:{$limite}", self::TTL, function () use ($limite) {
             $sql = "SELECT id, sku_pai, nome, categoria, preco_base, sustentavel, imagem_principal
-                    FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL
+                    FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''
                     ORDER BY created_at DESC LIMIT {$limite}";
             return $this->pdo->query($sql)->fetchAll();
         });
+    }
+
+
+    /**
+     * Carrega produtos por uma lista de sku_pai PRESERVANDO a ordem informada.
+     * Usado pelo ranking manual do admin (arrastar/soltar) e pela busca por SKU.
+     * Só retorna ativos com imagem.
+     *
+     * @param string[] $skus
+     */
+    public function porSkus(array $skus): array
+    {
+        $skus = array_values(array_filter(array_map(static fn ($s) => trim((string) $s), $skus), static fn ($s) => $s !== ''));
+        if (!$skus) {
+            return [];
+        }
+        $skus = array_slice($skus, 0, 50);
+        $ph   = implode(',', array_fill(0, count($skus), '?'));
+        $sql  = "SELECT sku_pai, nome, categoria, preco_base, sustentavel, imagem_principal
+                 FROM produtos
+                 WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''
+                   AND sku_pai IN ({$ph})";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($skus);
+
+        $porSku = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $porSku[$row['sku_pai']] = $row;
+        }
+        // Reordena conforme a lista de entrada (ordem do admin).
+        $ordenado = [];
+        foreach ($skus as $sku) {
+            if (isset($porSku[$sku])) {
+                $ordenado[] = $porSku[$sku];
+            }
+        }
+        return $ordenado;
     }
 }

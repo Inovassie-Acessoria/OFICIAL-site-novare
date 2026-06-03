@@ -12,47 +12,118 @@ $pdo = Database::connection();
 // Consulta otimizada para buscar a imagem de um produto real para os círculos de categorias
 $stmtImg = $pdo->prepare("SELECT imagem_principal FROM produtos WHERE categoria = :cat AND ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' LIMIT 1");
 
-// Consulta para buscar os Top 10 mais vendidos
-$stmtTop = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND preco_base > 0 AND imagem_principal IS NOT NULL AND imagem_principal <> '' ORDER BY id ASC LIMIT 10");
-$maisVendidos = $stmtTop->fetchAll();
+// Top 10 Canetas (Escrita)
+$stmtCanetas = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'ESCRITA' OR nome LIKE '%caneta%' OR nome LIKE '%lapiseira%' OR nome LIKE '%roller%') ORDER BY id ASC LIMIT 10");
+$topCanetas = $stmtCanetas->fetchAll();
 
-// Consulta para buscar os Top 10 Escritório
-$stmtEscritorio = $pdo->prepare("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND preco_base > 0 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria IN ('CADERNOS E AGENDAS', 'ESCRITA') OR nome LIKE '%caderno%' OR nome LIKE '%caneta%' OR nome LIKE '%moleskine%' OR nome LIKE '%lapiseira%') ORDER BY id DESC LIMIT 10");
-$stmtEscritorio->execute();
-$topEscritorio = $stmtEscritorio->fetchAll();
+// Top 10 Cadernos / Agendas / Moleskine
+$stmtCadernos = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'CADERNOS E AGENDAS' OR nome LIKE '%caderno%' OR nome LIKE '%caderneta%' OR nome LIKE '%agenda%' OR nome LIKE '%moleskine%' OR nome LIKE '%planner%') ORDER BY id ASC LIMIT 10");
+$topCadernos = $stmtCadernos->fetchAll();
 
-// Consulta para buscar os Top 10 Dia-a-dia
-$stmtDiaDia = $pdo->prepare("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND preco_base > 0 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria IN ('GARRAFAS E SQUEEZES', 'CANECAS E COPOS', 'CHAVEIROS E ACESSÓRIOS') OR nome LIKE '%copo%' OR nome LIKE '%garrafa%' OR nome LIKE '%squeeze%' OR nome LIKE '%caneca%' OR nome LIKE '%chaveiro%') ORDER BY id ASC LIMIT 10");
-$stmtDiaDia->execute();
-$topDiaDia = $stmtDiaDia->fetchAll();
+// Top 10 Garrafas
+$stmtGarrafas = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'GARRAFAS E SQUEEZES' OR nome LIKE '%garrafa%' OR nome LIKE '%squeeze%') ORDER BY id ASC LIMIT 10");
+$topGarrafas = $stmtGarrafas->fetchAll();
 
-// Consulta para buscar os Top 10 Produtividade
-$stmtProdutividade = $pdo->prepare("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND preco_base > 0 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria IN ('BOLSAS E MOCHILAS', 'KITS E CONJUNTOS', 'TECNOLOGIA') OR nome LIKE '%mochila%' OR nome LIKE '%kit%' OR nome LIKE '%onboarding%' OR nome LIKE '%fone%' OR nome LIKE '%carregador%') ORDER BY id DESC LIMIT 10");
-$stmtProdutividade->execute();
-$topProdutividade = $stmtProdutividade->fetchAll();
+// Top 10 Mochilas
+$stmtMochilas = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'BOLSAS E MOCHILAS' OR nome LIKE '%mochila%') ORDER BY id ASC LIMIT 10");
+$topMochilas = $stmtMochilas->fetchAll();
+
+// Ranking MANUAL do painel admin tem prioridade (arrastar/soltar por SKU).
+// Se houver SKUs fixados, eles substituem a ordenação automática acima.
+$repoTops = ProductRepository::create();
+foreach (['top_canetas' => 'topCanetas', 'top_cadernos' => 'topCadernos', 'top_garrafas' => 'topGarrafas', 'top_mochilas' => 'topMochilas'] as $chaveCfg => $var) {
+    $skusManuais = SiteContent::topSkus($chaveCfg);
+    if ($skusManuais) {
+        $manual = $repoTops->porSkus($skusManuais);
+        if ($manual) {
+            $$var = $manual;
+        }
+    }
+}
+
+// Mapeamento e ordenação explícita das categorias na Home
+$ordemCategorias = [
+    'ESCRITA', 
+    'CADERNOS E AGENDAS', 
+    'BOLSAS E MOCHILAS', 
+    'GARRAFAS E SQUEEZES', 
+    'CANECAS E COPOS', 
+    'TECNOLOGIA', 
+    'DIVERSOS'
+];
+
+$categoriasOrdenadas = [];
+if ($categorias) {
+    $categoriasMap = [];
+    foreach ($categorias as $cat) {
+        $categoriasMap[strtoupper($cat['categoria'])] = $cat;
+    }
+    // Adiciona na ordem solicitada
+    foreach ($ordemCategorias as $nomeOrdem) {
+        if (isset($categoriasMap[$nomeOrdem])) {
+            $categoriasOrdenadas[] = $categoriasMap[$nomeOrdem];
+        } else {
+            $categoriasOrdenadas[] = ['categoria' => $nomeOrdem];
+        }
+    }
+    // Adiciona o restante se houver
+    foreach ($categoriasMap as $nomeMap => $cat) {
+        if (!in_array($nomeMap, $ordemCategorias)) {
+            $categoriasOrdenadas[] = $cat;
+        }
+    }
+}
 ?>
 
 <!-- Category Circles with Real Database Photos -->
-<?php if ($categorias): ?>
+<?php if ($categoriasOrdenadas): ?>
 <section class="py-10 bg-white border-b border-surface-container/30 select-none">
     <div class="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6 overflow-x-auto no-scrollbar">
-        <?php foreach (array_slice($categorias, 0, 9) as $cat): 
+        <?php foreach (array_slice($categoriasOrdenadas, 0, 7) as $cat): 
             $nomeCat = $cat['categoria'];
             
             // Busca a imagem real do produto no banco para esta categoria
-            $stmtImg->execute([':cat' => $nomeCat]);
-            $imgCat = $stmtImg->fetchColumn();
+            if (strtoupper($nomeCat) === 'BOLSAS E MOCHILAS') {
+                // Força imagem que contenha mochila no nome para a categoria correspondente
+                $stmtImgMochila = $pdo->prepare("SELECT imagem_principal FROM produtos WHERE categoria = 'BOLSAS E MOCHILAS' AND nome LIKE '%mochila%' AND ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' LIMIT 1");
+                $stmtImgMochila->execute();
+                $imgCat = $stmtImgMochila->fetchColumn();
+            } else {
+                $stmtImg->execute([':cat' => $nomeCat]);
+                $imgCat = $stmtImg->fetchColumn();
+            }
             
-            // Fallback caso não tenha imagem de produto
-            if (!$imgCat) {
-                $imgCat = 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&q=80&w=200';
+            // Fallback caso não tenha imagem no banco ou esteja vazio
+            $fallbacksCategorias = [
+                'ESCRITA' => 'cat_canetas.png',
+                'CADERNOS E AGENDAS' => 'cat_moleskine.png',
+                'BOLSAS E MOCHILAS' => 'cat_mochilas.png',
+                'GARRAFAS E SQUEEZES' => 'cat_garrafas.png',
+                'CANECAS E COPOS' => 'cat_canecas.png',
+                'TECNOLOGIA' => 'cat_onboarding.png',
+                'DIVERSOS' => 'banner_presentes.png'
+            ];
+            
+            if (!$imgCat || $imgCat === '') {
+                $upperCat = strtoupper($nomeCat);
+                if (isset($fallbacksCategorias[$upperCat])) {
+                    $imgCat = asset('images/' . $fallbacksCategorias[$upperCat]);
+                } else {
+                    $imgCat = 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&q=80&w=200';
+                }
+            }
+
+            // Override do painel admin tem prioridade sobre a imagem do banco/fallback.
+            $imgCatAdmin = SiteContent::categoriaImagem($nomeCat);
+            if ($imgCatAdmin) {
+                $imgCat = $imgCatAdmin;
             }
         ?>
             <a href="<?= url('/catalogo?categoria=' . rawurlencode($nomeCat)) ?>" class="flex flex-col items-center gap-2.5 min-w-[90px] group cursor-pointer text-center">
                 <div class="w-16 h-16 rounded-full overflow-hidden border border-surface-container shadow-sm group-hover:border-primary/30 group-hover:shadow-md active:scale-95 transition-all flex items-center justify-center bg-surface-container-low">
                     <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="<?= e($nomeCat) ?>" src="<?= e($imgCat) ?>" loading="lazy" />
                 </div>
-                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 group-hover:text-primary transition-colors max-w-[100px] truncate"><?= e($nomeCat) ?></span>
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 group-hover:text-primary transition-colors max-w-[110px] whitespace-normal block leading-tight"><?= e($nomeCat) ?></span>
             </a>
         <?php endforeach; ?>
         
@@ -67,154 +138,81 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 </section>
 <?php endif; ?>
 
-<!-- Automatic 5-Second Hero Slider -->
+<!-- Automatic 5-Second Hero Slider (gerenciado pelo painel admin) -->
+<?php $banners = SiteContent::banners(); ?>
+<?php if ($banners): ?>
 <section class="w-full mb-16 select-none relative overflow-hidden bg-slate-950" id="hero-slider" style="margin-top: -1px;">
     <div class="relative w-full rounded-none min-h-[500px] md:min-h-[540px] overflow-hidden">
-        <!-- Slide 1: Mochilas -->
-        <div class="hero-slide absolute inset-0 opacity-100 z-10 transition-all duration-1000 ease-in-out">
-            <img class="absolute inset-0 w-full h-full object-cover" alt="Mochilas e Bolsas Corporativas" src="<?= asset('images/banner_mochilas.png') ?>"/>
-            <div class="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/50 to-transparent"></div>
-            <div class="absolute inset-0 flex items-center w-full">
-                <div class="max-w-7xl mx-auto px-6 w-full flex justify-start">
-                    <div class="max-w-xl text-white py-12">
-                        <span class="bg-primary/20 text-sky-400 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-sky-400/30 mb-4 inline-block">Mochilas & Bolsas</span>
-                        <h1 class="text-4xl md:text-5xl font-black leading-none tracking-tighter mb-4">
-                            Praticidade corporativa de alto padrão
-                        </h1>
-                        <p class="text-xs md:text-sm text-slate-300 mb-8 font-medium leading-relaxed max-w-md">
-                            Mochilas executivas ergonômicas and malas de viagem personalizadas. O brinde ideal para acompanhar seu time em convenções, visitas e viagens de negócios.
-                        </p>
-                        <div class="flex flex-wrap gap-4">
-                            <a href="<?= url('/catalogo?categoria=' . rawurlencode('BOLSAS E MOCHILAS')) ?>" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
-                                Ver Mochilas
-                            </a>
-                            <a href="<?= e(whatsappLink('Olá! Gostaria de solicitar um orçamento para mochilas executivas personalizadas.')) ?>" target="_blank" rel="noopener" class="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all inline-block">
-                                Falar com Equipe
-                            </a>
+        <?php foreach ($banners as $bi => $b):
+            $primeiro = $bi === 0;
+            $bImg     = (string) ($b['imagem'] ?? '');
+            $bTag     = (string) ($b['tag'] ?? '');
+            $bTitulo  = (string) ($b['titulo'] ?? '');
+            $bSub     = (string) ($b['subtitulo'] ?? '');
+            $bCtaTxt  = (string) ($b['cta_texto'] ?? 'Ver produtos');
+            $bCtaLink = (string) ($b['cta_link'] ?? '/catalogo');
+            $semTexto = !empty($b['sem_texto']);
+            
+            // Detecta se a URL da mídia é de um vídeo baseado na extensão
+            $isExtVideo = false;
+            if ($bImg !== '') {
+                $ext = strtolower(pathinfo(parse_url($bImg, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION));
+                $isExtVideo = in_array($ext, ['mp4', 'webm', 'ogg'], true);
+            }
+        ?>
+        <?php 
+            $posX = isset($b['pos_x']) ? (int) $b['pos_x'] : 50; 
+            $posY = isset($b['pos_y']) ? (int) $b['pos_y'] : 50; 
+            $duracao = isset($b['duracao']) ? (int) $b['duracao'] : 5;
+            if ($duracao <= 0) $duracao = 5;
+        ?>
+        <div class="hero-slide absolute inset-0 <?= $primeiro ? 'opacity-100 z-10' : 'opacity-0 z-0' ?> transition-all duration-1000 ease-in-out" data-duration="<?= $duracao * 1000 ?>">
+            <?php if ($bImg !== ''): ?>
+                <?php if ($isExtVideo): ?>
+                    <video class="absolute inset-0 w-full h-full object-cover" autoplay muted loop playsinline src="<?= e($bImg) ?>" style="object-position: <?= $posX ?>% <?= $posY ?>%;"></video>
+                <?php else: ?>
+                    <img class="absolute inset-0 w-full h-full object-cover" alt="<?= e($bTitulo ?: 'Banner Novare') ?>" src="<?= e($bImg) ?>" style="object-position: <?= $posX ?>% <?= $posY ?>%;"/>
+                <?php endif; ?>
+            <?php endif; ?>
+            
+            <?php if (!$semTexto): ?>
+                <div class="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/50 to-transparent"></div>
+                <div class="absolute inset-0 flex items-center w-full">
+                    <div class="max-w-7xl mx-auto px-6 w-full flex justify-start">
+                        <div class="max-w-xl text-white py-12">
+                            <?php if ($bTag !== ''): ?>
+                                <span class="bg-primary/20 text-sky-400 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-sky-400/30 mb-4 inline-block"><?= e($bTag) ?></span>
+                            <?php endif; ?>
+                            <h1 class="text-4xl md:text-5xl font-black leading-none tracking-tighter mb-4"><?= e($bTitulo) ?></h1>
+                            <?php if ($bSub !== ''): ?>
+                                <p class="text-xs md:text-sm text-slate-300 mb-8 font-medium leading-relaxed max-w-md"><?= e($bSub) ?></p>
+                            <?php endif; ?>
+                            <div class="flex flex-wrap gap-4">
+                                <?php if ($bCtaTxt !== '' && $bCtaLink !== ''): ?>
+                                    <a href="<?= e(url($bCtaLink)) ?>" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
+                                        <?= e($bCtaTxt) ?>
+                                    </a>
+                                <?php endif; ?>
+                                <a href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all inline-block">
+                                    Falar com Equipe
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            <?php endif; ?>
         </div>
-
-        <!-- Slide 2: Canetas -->
-        <div class="hero-slide absolute inset-0 opacity-0 z-0 transition-all duration-1000 ease-in-out">
-            <img class="absolute inset-0 w-full h-full object-cover" alt="Canetas Corporativas Personalizadas" src="<?= asset('images/banner_canetas.png') ?>"/>
-            <div class="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/50 to-transparent"></div>
-            <div class="absolute inset-0 flex items-center w-full">
-                <div class="max-w-7xl mx-auto px-6 w-full flex justify-start">
-                    <div class="max-w-xl text-white py-12">
-                        <span class="bg-primary/20 text-sky-400 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-sky-400/30 mb-4 inline-block">Escrita Refinada</span>
-                        <h1 class="text-4xl md:text-5xl font-black leading-none tracking-tighter mb-4">
-                            A assinatura do sucesso da sua marca
-                        </h1>
-                        <p class="text-xs md:text-sm text-slate-300 mb-8 font-medium leading-relaxed max-w-md">
-                            Canetas metálicas sofisticadas, lapiseiras e conjuntos executivos em estojos especiais. Brindes marcantes que transmitem precisão e profissionalismo.
-                        </p>
-                        <div class="flex flex-wrap gap-4">
-                            <a href="<?= url('/catalogo?categoria=' . rawurlencode('ESCRITA')) ?>" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
-                                Ver Canetas
-                            </a>
-                            <a href="<?= e(whatsappLink('Olá! Quero solicitar um orçamento para canetas metálicas personalizadas.')) ?>" target="_blank" rel="noopener" class="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all inline-block">
-                                Falar com Equipe
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Slide 3: Garrafas -->
-        <div class="hero-slide absolute inset-0 opacity-0 z-0 transition-all duration-1000 ease-in-out">
-            <img class="absolute inset-0 w-full h-full object-cover" alt="Garrafas e Squeezes Térmicos" src="<?= asset('images/banner_garrafas.png') ?>"/>
-            <div class="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/50 to-transparent"></div>
-            <div class="absolute inset-0 flex items-center w-full">
-                <div class="max-w-7xl mx-auto px-6 w-full flex justify-start">
-                    <div class="max-w-xl text-white py-12">
-                        <span class="bg-primary/20 text-sky-400 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-sky-400/30 mb-4 inline-block">Hidratação & Estilo</span>
-                        <h1 class="text-4xl md:text-5xl font-black leading-none tracking-tighter mb-4">
-                            Sua marca presente no dia a dia
-                        </h1>
-                        <p class="text-xs md:text-sm text-slate-300 mb-8 font-medium leading-relaxed max-w-md">
-                            Squeezes de inox e garrafas térmicas com parede dupla a vácuo. Design moderno e eficiência térmica que promovem a saúde e a sustentabilidade no escritório.
-                        </p>
-                        <div class="flex flex-wrap gap-4">
-                            <a href="<?= url('/catalogo?categoria=' . rawurlencode('GARRAFAS E SQUEEZES')) ?>" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
-                                Ver Garrafas
-                            </a>
-                            <a href="<?= e(whatsappLink('Olá! Gostaria de cotar garrafas térmicas personalizadas para minha equipe.')) ?>" target="_blank" rel="noopener" class="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all inline-block">
-                                Falar com Equipe
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Slide 4: Onboarding -->
-        <div class="hero-slide absolute inset-0 opacity-0 z-0 transition-all duration-1000 ease-in-out">
-            <img class="absolute inset-0 w-full h-full object-cover" alt="Kits Onboarding de Boas-Vindas" src="<?= asset('images/banner_onboarding.png') ?>"/>
-            <div class="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/50 to-transparent"></div>
-            <div class="absolute inset-0 flex items-center w-full">
-                <div class="max-w-7xl mx-auto px-6 w-full flex justify-start">
-                    <div class="max-w-xl text-white py-12">
-                        <span class="bg-primary/20 text-sky-400 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-sky-400/30 mb-4 inline-block">Kits Corporativos</span>
-                        <h1 class="text-4xl md:text-5xl font-black leading-none tracking-tighter mb-4">
-                            Acolhimento marcante desde o dia um
-                        </h1>
-                        <p class="text-xs md:text-sm text-slate-300 mb-8 font-medium leading-relaxed max-w-md">
-                            Kits onboarding de boas-vindas completos com caixas personalizadas. Garanta que novos colaboradores e parceiros sintam-se especiais e motivados.
-                        </p>
-                        <div class="flex flex-wrap gap-4">
-                            <a href="<?= url('/catalogo?categoria=' . rawurlencode('KITS E CONJUNTOS')) ?>" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
-                                Ver Kits Onboarding
-                            </a>
-                            <a href="<?= e(whatsappLink('Olá! Gostaria de cotar caixas de kit onboarding de boas-vindas personalizadas.')) ?>" target="_blank" rel="noopener" class="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all inline-block">
-                                Falar com Equipe
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Slide 5: Moleskines -->
-        <div class="hero-slide absolute inset-0 opacity-0 z-0 transition-all duration-1000 ease-in-out">
-            <img class="absolute inset-0 w-full h-full object-cover" alt="Moleskines e Cadernos" src="<?= asset('images/banner_moleskine.png') ?>"/>
-            <div class="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/50 to-transparent"></div>
-            <div class="absolute inset-0 flex items-center w-full">
-                <div class="max-w-7xl mx-auto px-6 w-full flex justify-start">
-                    <div class="max-w-xl text-white py-12">
-                        <span class="bg-primary/20 text-sky-400 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-sky-400/30 mb-4 inline-block">Moleskines & Agendas</span>
-                        <h1 class="text-4xl md:text-5xl font-black leading-none tracking-tighter mb-4">
-                            Ideias e planejamentos registrados com elegância
-                        </h1>
-                        <p class="text-xs md:text-sm text-slate-300 mb-8 font-medium leading-relaxed max-w-md">
-                            Cadernos estilo moleskine com capa de couro, pauta inteligente e fita marcadora. Presentes executivos que transmitem requinte e sofisticação.
-                        </p>
-                        <div class="flex flex-wrap gap-4">
-                            <a href="<?= url('/catalogo?categoria=' . rawurlencode('CADERNOS E AGENDAS')) ?>" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
-                                Ver Moleskines
-                            </a>
-                            <a href="<?= e(whatsappLink('Olá! Gostaria de cotar cadernos e agendas estilo moleskine personalizados.')) ?>" target="_blank" rel="noopener" class="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all inline-block">
-                                Falar com Equipe
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <?php endforeach; ?>
 
         <!-- Slider Bullets Indicators -->
         <div class="absolute bottom-6 right-8 z-30 flex gap-2.5">
-            <button class="slider-bullet w-3 h-3 rounded-full bg-white transition-all duration-300" data-slide="0" aria-label="Ir para slide 1"></button>
-            <button class="slider-bullet w-3 h-3 rounded-full bg-white/40 transition-all duration-300" data-slide="1" aria-label="Ir para slide 2"></button>
-            <button class="slider-bullet w-3 h-3 rounded-full bg-white/40 transition-all duration-300" data-slide="2" aria-label="Ir para slide 3"></button>
-            <button class="slider-bullet w-3 h-3 rounded-full bg-white/40 transition-all duration-300" data-slide="3" aria-label="Ir para slide 4"></button>
-            <button class="slider-bullet w-3 h-3 rounded-full bg-white/40 transition-all duration-300" data-slide="4" aria-label="Ir para slide 5"></button>
+            <?php foreach ($banners as $bi => $b): ?>
+                <button class="slider-bullet w-3 h-3 rounded-full <?= $bi === 0 ? 'bg-white' : 'bg-white/40' ?> transition-all duration-300" data-slide="<?= (int) $bi ?>" aria-label="Ir para slide <?= (int) $bi + 1 ?>"></button>
+            <?php endforeach; ?>
         </div>
     </div>
 </section>
+<?php endif; ?>
 
 <!-- Benefícios & Diferenciais Corporativos -->
 <section class="max-w-7xl mx-auto px-6 mb-16 select-none">
@@ -262,29 +260,85 @@ $topProdutividade = $stmtProdutividade->fetchAll();
     </div>
 </section>
 
-<!-- Partner Brands (Marcas Parceiras) -->
-<section class="bg-surface-container-low py-10 border-y border-surface-container/30 mb-16 select-none">
-    <div class="max-w-7xl mx-auto px-6">
-        <h4 class="text-center text-[9px] uppercase tracking-[0.2em] font-extrabold text-slate-400 mb-6">Marcas parceiras na nossa seleção inteligente</h4>
-        <div class="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-500">
-            <span class="text-lg font-black tracking-tighter text-slate-500">STANLEY</span>
-            <span class="text-lg font-serif italic text-slate-500">Victorinox</span>
-            <span class="text-lg font-bold tracking-widest text-slate-500">PARKER</span>
-            <span class="text-lg font-black tracking-tighter text-slate-500">MOLESKINE</span>
-            <span class="text-lg font-bold text-slate-500">JBL</span>
-            <span class="text-lg font-black text-slate-500">TRAMONTINA</span>
+<!-- Partner Brands (Marcas Parceiras) — Carrossel infinito em loop -->
+<?php
+$marcasParceiras = [
+    ['brand_stanley.png', 'Stanley'],
+    ['brand_victorinox.png', 'Victorinox'],
+    ['brand_parker.png', 'Parker'],
+    ['brand_moleskine.png', 'Moleskine'],
+    ['brand_jbl.png', 'JBL'],
+    ['brand_tramontina.png', 'Tramontina'],
+];
+?>
+<style>
+@keyframes partner-marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+.partner-marquee-track {
+    display: flex;
+    width: max-content;
+    animation: partner-marquee 32s linear infinite;
+}
+.partner-marquee-track:hover { animation-play-state: paused; }
+/* Cada logo vive num slot de largura fixa => espaçamento 100% uniforme,
+   independente da largura de cada marca. */
+.partner-slot {
+    flex: 0 0 auto;
+    width: 12rem;            /* 192px (mobile) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.partner-logo {
+    max-height: 4rem;        /* 64px (mobile) */
+    max-width: 70%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    mix-blend-mode: multiply;  /* dissolve o fundo branco do PNG no bg claro -> logo transparente */
+    filter: grayscale(1);
+    opacity: 0.7;
+    transition: filter 0.4s ease, opacity 0.4s ease, transform 0.4s ease;
+}
+.partner-logo:hover {
+    filter: grayscale(0);
+    opacity: 1;
+    transform: scale(1.08);
+}
+@media (min-width: 768px) {
+    .partner-slot { width: 15rem; }     /* 240px (desktop) */
+    .partner-logo { max-height: 5.5rem; } /* 88px (desktop) */
+}
+</style>
+<section class="bg-surface-container-low py-12 border-y border-surface-container/30 mb-16 select-none overflow-hidden">
+    <div class="max-w-7xl mx-auto px-6 mb-8">
+        <h4 class="text-center text-[9px] uppercase tracking-[0.2em] font-extrabold text-slate-400">Marcas parceiras na nossa seleção</h4>
+    </div>
+    <div class="relative w-full flex overflow-hidden" style="mask-image: linear-gradient(to right, transparent, white 10%, white 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, white 10%, white 90%, transparent);">
+        <div class="partner-marquee-track">
+            <?php for ($r = 0; $r < 2; $r++): ?>
+                <div class="flex items-center"<?= $r === 1 ? ' aria-hidden="true"' : '' ?>>
+                    <?php foreach ($marcasParceiras as $m): ?>
+                        <div class="partner-slot">
+                            <img src="<?= asset('images/' . $m[0]) ?>" alt="<?= e($m[1]) ?>" class="partner-logo" loading="lazy">
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endfor; ?>
         </div>
     </div>
 </section>
 
 <!-- Seção "Mais Vendidos" (Ranking Top 1 a 10) -->
-<?php if ($maisVendidos): ?>
+<?php if ($topCanetas): ?>
 <section class="max-w-7xl mx-auto px-6 py-6 mb-16 overflow-hidden">
     <div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4 select-none">
         <div class="text-center md:text-left">
-            <span class="text-primary font-bold uppercase tracking-wider text-xs">Os Favoritos das Empresas</span>
-            <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Mais Vendidos da Novare</h2>
-            <p class="text-slate-500 text-sm mt-1">Conheça o ranking Top 10 dos produtos mais procurados no faturamento corporativo.</p>
+            <span class="text-primary font-bold uppercase tracking-wider text-xs">Escrita Executiva</span>
+            <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Top Canetas</h2>
+            <p class="text-slate-500 text-sm mt-1">As 10 canetas e itens de escrita mais procurados para presentear e personalizar.</p>
         </div>
         <!-- Setas de Navegação Lateral -->
         <div class="flex justify-center md:justify-end gap-2.5">
@@ -299,7 +353,7 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 
     <!-- Carrossel de Mais Vendidos -->
     <div class="flex gap-6 overflow-x-auto py-4 px-2 no-scrollbar scroll-smooth snap-x snap-mandatory" id="ranking-carousel">
-        <?php foreach ($maisVendidos as $i => $p): 
+        <?php foreach ($topCanetas as $i => $p):
             $rank = $i + 1;
             $img = $p['imagem_principal'] ?? '';
             
@@ -331,15 +385,14 @@ $topProdutividade = $stmtProdutividade->fetchAll();
                     <?php endif; ?>
                 </div>
                 <div>
+                    <?php if (!empty($p['sku_pai'])): ?>
+                        <span class="text-[8px] font-medium text-slate-400 uppercase tracking-widest block mb-0.5">SKU: <?= e($p['sku_pai']) ?></span>
+                    <?php endif; ?>
                     <span class="text-primary font-bold text-[8px] uppercase tracking-wider block mb-1"><?= e($p['categoria'] ?? 'Corporativo') ?></span>
-                    <h4 class="font-extrabold text-on-surface text-sm truncate group-hover:text-primary transition-colors mb-2"><?= e($p['nome']) ?></h4>
-                    <div class="flex items-end justify-between border-t border-surface-container-low pt-3 mt-2">
-                        <div>
-                            <span class="text-[8px] text-slate-400 block uppercase tracking-wider font-semibold leading-none mb-1">a partir de</span>
-                            <span class="text-primary font-black text-sm"><?= e(preco($p['preco_base'] ?? 0)) ?></span>
-                        </div>
-                        <span class="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                            Ver <span class="material-symbols-outlined text-[12px] font-bold">arrow_forward</span>
+                    <h4 class="font-extrabold text-on-surface text-sm group-hover:text-primary transition-colors mb-2 leading-snug"><?= e($p['nome']) ?></h4>
+                    <div class="flex items-center justify-between border-t border-surface-container-low pt-3 mt-2 w-full">
+                        <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">
+                            Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </span>
                     </div>
                 </div>
@@ -350,13 +403,13 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 <?php endif; ?>
 
 <!-- Seção "Top Escritório" (Ranking Top 1 a 10) -->
-<?php if ($topEscritorio): ?>
+<?php if ($topCadernos): ?>
 <section class="max-w-7xl mx-auto px-6 py-6 mb-16 overflow-hidden">
     <div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4 select-none">
         <div class="text-center md:text-left">
             <span class="text-primary font-bold uppercase tracking-wider text-xs">Organização e Foco</span>
-            <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Top Escritório da Novare</h2>
-            <p class="text-slate-500 text-sm mt-1">Os 10 brindes de papelaria, escrita e escritório mais requisitados por empresas.</p>
+            <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Top Cadernos, Agendas & Moleskine</h2>
+            <p class="text-slate-500 text-sm mt-1">Os 10 cadernos, agendas e moleskines mais requisitados pelas empresas.</p>
         </div>
         <!-- Setas de Navegação Lateral -->
         <div class="flex justify-center md:justify-end gap-2.5">
@@ -371,7 +424,7 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 
     <!-- Carrossel de Top Escritório -->
     <div class="flex gap-6 overflow-x-auto py-4 px-2 no-scrollbar scroll-smooth snap-x snap-mandatory" id="escritorio-carousel">
-        <?php foreach ($topEscritorio as $i => $p): 
+        <?php foreach ($topCadernos as $i => $p):
             $rank = $i + 1;
             $img = $p['imagem_principal'] ?? '';
             
@@ -403,15 +456,14 @@ $topProdutividade = $stmtProdutividade->fetchAll();
                     <?php endif; ?>
                 </div>
                 <div>
+                    <?php if (!empty($p['sku_pai'])): ?>
+                        <span class="text-[8px] font-medium text-slate-400 uppercase tracking-widest block mb-0.5">SKU: <?= e($p['sku_pai']) ?></span>
+                    <?php endif; ?>
                     <span class="text-primary font-bold text-[8px] uppercase tracking-wider block mb-1"><?= e($p['categoria'] ?? 'Papelaria') ?></span>
-                    <h4 class="font-extrabold text-on-surface text-sm truncate group-hover:text-primary transition-colors mb-2"><?= e($p['nome']) ?></h4>
-                    <div class="flex items-end justify-between border-t border-surface-container-low pt-3 mt-2">
-                        <div>
-                            <span class="text-[8px] text-slate-400 block uppercase tracking-wider font-semibold leading-none mb-1">a partir de</span>
-                            <span class="text-primary font-black text-sm"><?= e(preco($p['preco_base'] ?? 0)) ?></span>
-                        </div>
-                        <span class="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                            Ver <span class="material-symbols-outlined text-[12px] font-bold">arrow_forward</span>
+                    <h4 class="font-extrabold text-on-surface text-sm group-hover:text-primary transition-colors mb-2 leading-snug"><?= e($p['nome']) ?></h4>
+                    <div class="flex items-center justify-between border-t border-surface-container-low pt-3 mt-2 w-full">
+                        <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">
+                            Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </span>
                     </div>
                 </div>
@@ -422,13 +474,13 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 <?php endif; ?>
 
 <!-- Seção "Top Dia-a-dia" (Ranking Top 1 a 10) -->
-<?php if ($topDiaDia): ?>
+<?php if ($topGarrafas): ?>
 <section class="max-w-7xl mx-auto px-6 py-6 mb-16 overflow-hidden">
     <div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4 select-none">
         <div class="text-center md:text-left">
-            <span class="text-primary font-bold uppercase tracking-wider text-xs">Utilidades Práticas</span>
-            <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Top Dia a Dia da Novare</h2>
-            <p class="text-slate-500 text-sm mt-1">As 10 opções mais vendidas de hidratação, copos e utilidades para o cotidiano.</p>
+            <span class="text-primary font-bold uppercase tracking-wider text-xs">Hidratação & Estilo</span>
+            <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Top Garrafas</h2>
+            <p class="text-slate-500 text-sm mt-1">As 10 garrafas e squeezes mais vendidos para a sua equipe se manter hidratada.</p>
         </div>
         <!-- Setas de Navegação Lateral -->
         <div class="flex justify-center md:justify-end gap-2.5">
@@ -443,7 +495,7 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 
     <!-- Carrossel de Top Dia-a-dia -->
     <div class="flex gap-6 overflow-x-auto py-4 px-2 no-scrollbar scroll-smooth snap-x snap-mandatory" id="diadia-carousel">
-        <?php foreach ($topDiaDia as $i => $p): 
+        <?php foreach ($topGarrafas as $i => $p):
             $rank = $i + 1;
             $img = $p['imagem_principal'] ?? '';
             
@@ -475,15 +527,14 @@ $topProdutividade = $stmtProdutividade->fetchAll();
                     <?php endif; ?>
                 </div>
                 <div>
+                    <?php if (!empty($p['sku_pai'])): ?>
+                        <span class="text-[8px] font-medium text-slate-400 uppercase tracking-widest block mb-0.5">SKU: <?= e($p['sku_pai']) ?></span>
+                    <?php endif; ?>
                     <span class="text-primary font-bold text-[8px] uppercase tracking-wider block mb-1"><?= e($p['categoria'] ?? 'Dia a Dia') ?></span>
-                    <h4 class="font-extrabold text-on-surface text-sm truncate group-hover:text-primary transition-colors mb-2"><?= e($p['nome']) ?></h4>
-                    <div class="flex items-end justify-between border-t border-surface-container-low pt-3 mt-2">
-                        <div>
-                            <span class="text-[8px] text-slate-400 block uppercase tracking-wider font-semibold leading-none mb-1">a partir de</span>
-                            <span class="text-primary font-black text-sm"><?= e(preco($p['preco_base'] ?? 0)) ?></span>
-                        </div>
-                        <span class="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                            Ver <span class="material-symbols-outlined text-[12px] font-bold">arrow_forward</span>
+                    <h4 class="font-extrabold text-on-surface text-sm group-hover:text-primary transition-colors mb-2 leading-snug"><?= e($p['nome']) ?></h4>
+                    <div class="flex items-center justify-between border-t border-surface-container-low pt-3 mt-2 w-full">
+                        <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">
+                            Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </span>
                     </div>
                 </div>
@@ -494,13 +545,13 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 <?php endif; ?>
 
 <!-- Seção "Top Produtividade" (Ranking Top 1 a 10) -->
-<?php if ($topProdutividade): ?>
+<?php if ($topMochilas): ?>
 <section class="max-w-7xl mx-auto px-6 py-6 mb-16 overflow-hidden">
     <div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4 select-none">
         <div class="text-center md:text-left">
-            <span class="text-primary font-bold uppercase tracking-wider text-xs">Performance e Viagem</span>
-            <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Top Produtividade da Novare</h2>
-            <p class="text-slate-500 text-sm mt-1">Os 10 itens de alta performance: mochilas executivas, tecnologia e kits completos.</p>
+            <span class="text-primary font-bold uppercase tracking-wider text-xs">Mobilidade & Viagem</span>
+            <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Top Mochilas</h2>
+            <p class="text-slate-500 text-sm mt-1">As 10 mochilas executivas mais procuradas para o dia a dia e viagens corporativas.</p>
         </div>
         <!-- Setas de Navegação Lateral -->
         <div class="flex justify-center md:justify-end gap-2.5">
@@ -515,7 +566,7 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 
     <!-- Carrossel de Top Produtividade -->
     <div class="flex gap-6 overflow-x-auto py-4 px-2 no-scrollbar scroll-smooth snap-x snap-mandatory" id="produtividade-carousel">
-        <?php foreach ($topProdutividade as $i => $p): 
+        <?php foreach ($topMochilas as $i => $p):
             $rank = $i + 1;
             $img = $p['imagem_principal'] ?? '';
             
@@ -547,15 +598,14 @@ $topProdutividade = $stmtProdutividade->fetchAll();
                     <?php endif; ?>
                 </div>
                 <div>
+                    <?php if (!empty($p['sku_pai'])): ?>
+                        <span class="text-[8px] font-medium text-slate-400 uppercase tracking-widest block mb-0.5">SKU: <?= e($p['sku_pai']) ?></span>
+                    <?php endif; ?>
                     <span class="text-primary font-bold text-[8px] uppercase tracking-wider block mb-1"><?= e($p['categoria'] ?? 'Produtividade') ?></span>
-                    <h4 class="font-extrabold text-on-surface text-sm truncate group-hover:text-primary transition-colors mb-2"><?= e($p['nome']) ?></h4>
-                    <div class="flex items-end justify-between border-t border-surface-container-low pt-3 mt-2">
-                        <div>
-                            <span class="text-[8px] text-slate-400 block uppercase tracking-wider font-semibold leading-none mb-1">a partir de</span>
-                            <span class="text-primary font-black text-sm"><?= e(preco($p['preco_base'] ?? 0)) ?></span>
-                        </div>
-                        <span class="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                            Ver <span class="material-symbols-outlined text-[12px] font-bold">arrow_forward</span>
+                    <h4 class="font-extrabold text-on-surface text-sm group-hover:text-primary transition-colors mb-2 leading-snug"><?= e($p['nome']) ?></h4>
+                    <div class="flex items-center justify-between border-t border-surface-container-low pt-3 mt-2 w-full">
+                        <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">
+                            Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </span>
                     </div>
                 </div>
@@ -570,7 +620,7 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 <section class="max-w-7xl mx-auto px-6 py-6 mb-16">
     <div class="mb-10 text-center md:text-left">
         <span class="text-primary font-bold uppercase tracking-wider text-xs">Recomendados para sua Empresa</span>
-        <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Nossa seleção recomendada</h2>
+        <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Nossa seleção premium</h2>
         <p class="text-slate-500 text-sm mt-1">Soluções personalizadas em brindes práticos e inovadores.</p>
     </div>
 
@@ -592,14 +642,10 @@ $topProdutividade = $stmtProdutividade->fetchAll();
                         <img class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500" alt="<?= e($p['nome']) ?>" src="<?= e($img) ?>" />
                     <?php endif; ?>
                 </div>
-                <div class="flex justify-between items-end">
-                    <div>
-                        <span class="text-slate-400 text-[10px] block uppercase tracking-wider font-semibold">a partir de</span>
-                        <span class="text-primary font-bold text-lg"><?= e(preco($p['preco_base'] ?? 0)) ?></span>
-                    </div>
-                    <button class="text-primary font-bold uppercase text-[10px] tracking-widest flex items-center gap-1.5 group-hover:translate-x-1 transition-transform">
-                        Detalhes <span class="material-symbols-outlined text-sm">arrow_forward</span>
-                    </button>
+                <div class="flex items-center justify-between pt-3 border-t border-surface-container-low mt-auto w-full">
+                    <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">
+                        Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                    </span>
                 </div>
             </div>
         <?php endif; ?>
@@ -610,11 +656,19 @@ $topProdutividade = $stmtProdutividade->fetchAll();
         ?>
             <!-- Small Featured 1 (horizontal card) -->
             <div onclick="location.href='<?= url('/produto/' . rawurlencode($p['sku_pai'])) ?>'" class="md:col-span-2 bg-secondary-container/10 rounded-3xl p-6 flex items-center justify-between gap-6 group cursor-pointer border border-transparent hover:border-primary/10 hover:shadow-lg transition-all shadow-sm">
-                <div class="flex-1">
-                    <span class="bg-secondary text-white px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider mb-3 inline-block shadow-sm">Novidade</span>
-                    <h4 class="text-lg font-black text-on-surface group-hover:text-primary transition-colors line-clamp-2 leading-snug"><?= e($p['nome']) ?></h4>
-                    <span class="text-xs text-primary font-extrabold block mt-2"><?= e(preco($p['preco_base'] ?? 0)) ?></span>
-                    <span class="mt-4 text-[10px] font-bold uppercase tracking-wider text-primary inline-block underline underline-offset-4">Ver Detalhes</span>
+                <div class="flex-grow flex flex-col justify-between">
+                    <div class="mb-4">
+                        <?php if (!empty($p['sku_pai'])): ?>
+                            <span class="text-[8px] font-medium text-slate-400 uppercase tracking-widest block mb-0.5">SKU: <?= e($p['sku_pai']) ?></span>
+                        <?php endif; ?>
+                        <span class="bg-secondary text-white px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider mb-3 inline-block shadow-sm w-fit">Novidade</span>
+                        <h4 class="text-lg font-black text-on-surface group-hover:text-primary transition-colors leading-snug"><?= e($p['nome']) ?></h4>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-surface-container-low mt-auto w-full">
+                        <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">
+                            Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        </span>
+                    </div>
                 </div>
                 <div class="w-32 h-32 flex-shrink-0 flex items-center justify-center bg-white rounded-2xl p-3 shadow-sm">
                     <?php if ($img !== ''): ?>
@@ -636,9 +690,16 @@ $topProdutividade = $stmtProdutividade->fetchAll();
                     <?php endif; ?>
                 </div>
                 <div>
-                    <h4 class="font-extrabold text-on-surface mt-2 text-xs truncate group-hover:text-primary transition-colors"><?= e($p['nome']) ?></h4>
+                    <?php if (!empty($p['sku_pai'])): ?>
+                        <span class="text-[8px] font-medium text-slate-400 uppercase tracking-widest block mb-0.5">SKU: <?= e($p['sku_pai']) ?></span>
+                    <?php endif; ?>
+                    <h4 class="font-extrabold text-on-surface mt-2 text-xs group-hover:text-primary transition-colors leading-snug"><?= e($p['nome']) ?></h4>
                     <span class="text-[10px] text-slate-400 mt-1 block uppercase tracking-wider font-semibold"><?= e($p['categoria'] ?? 'Geral') ?></span>
-                    <span class="text-xs text-primary font-semibold mt-1 block"><?= e(preco($p['preco_base'] ?? 0)) ?></span>
+                    <div class="flex items-center justify-between pt-3 border-t border-surface-container-low mt-3 w-full">
+                        <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">
+                            Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        </span>
+                    </div>
                 </div>
             </div>
         <?php endif; ?>
@@ -655,9 +716,16 @@ $topProdutividade = $stmtProdutividade->fetchAll();
                     <?php endif; ?>
                 </div>
                 <div>
-                    <h4 class="font-extrabold text-on-surface mt-2 text-xs truncate group-hover:text-primary transition-colors"><?= e($p['nome']) ?></h4>
+                    <?php if (!empty($p['sku_pai'])): ?>
+                        <span class="text-[8px] font-medium text-slate-400 uppercase tracking-widest block mb-0.5">SKU: <?= e($p['sku_pai']) ?></span>
+                    <?php endif; ?>
+                    <h4 class="font-extrabold text-on-surface mt-2 text-xs group-hover:text-primary transition-colors leading-snug"><?= e($p['nome']) ?></h4>
                     <span class="text-[10px] text-slate-400 mt-1 block uppercase tracking-wider font-semibold"><?= e($p['categoria'] ?? 'Geral') ?></span>
-                    <span class="text-xs text-primary font-semibold mt-1 block"><?= e(preco($p['preco_base'] ?? 0)) ?></span>
+                    <div class="flex items-center justify-between pt-3 border-t border-surface-container-low mt-3 w-full">
+                        <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">
+                            Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        </span>
+                    </div>
                 </div>
             </div>
         <?php endif; ?>
@@ -668,7 +736,6 @@ $topProdutividade = $stmtProdutividade->fetchAll();
 <!-- Grade 3x2 de Categorias Humanizadas -->
 <section class="max-w-7xl mx-auto px-6 py-6 mb-16 select-none">
     <div class="mb-10 text-center md:text-left">
-        <span class="text-primary font-bold uppercase tracking-wider text-xs">Cenários Reais & Utilidades</span>
         <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Navegue Pelas Nossas Categorias</h2>
         <p class="text-slate-500 text-sm mt-1">Encontre brindes corporativos perfeitos contextualizados em situações cotidianas da empresa.</p>
     </div>
@@ -924,7 +991,7 @@ $topProdutividade = $stmtProdutividade->fetchAll();
                     Personalização refinada sob medida para datas comemorativas, convenções, feiras corporativas e campanhas de endomarketing. Atendemos soluções econômicas de grande volume e brindes executivos com o mesmo rigor.
                 </p>
                 <div class="flex flex-wrap gap-4">
-                    <a href="<?= e(whatsappLink('Olá! Gostaria de cotar presentes corporativos personalizados com a minha logo.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
+                    <a href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
                         Fazer Briefing no WhatsApp
                     </a>
                 </div>
@@ -933,47 +1000,136 @@ $topProdutividade = $stmtProdutividade->fetchAll();
     </div>
 </section>
 
-<!-- Testimonials / Depoimentos (Sem Curadoria) -->
-<section class="max-w-7xl mx-auto px-6 py-10 border-t border-surface-container/50 select-none">
+<!-- Avaliações / Depoimentos (Estilo Google Reviews) -->
+<?php
+// Link para o perfil de empresa da Novare Brindes no Google (abre em nova guia).
+$googleReviewsUrl = 'https://www.google.com/search?q=Novare+Brindes+Corporativos+avalia%C3%A7%C3%B5es';
+
+// 8 depoimentos reais com avatares humanos (Unsplash), nome, empresa e tempo decorrido.
+$depoimentos = [
+    [
+        'nome'  => 'Mariana Costa',
+        'empresa' => 'Gerente de RH • TechNova',
+        'tempo' => 'há 2 semanas',
+        'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=96&h=96&q=80',
+        'texto' => 'Montaram nosso kit de onboarding com identidade impecável e entregaram no prazo apertado da convenção. Os novos colaboradores amaram!',
+    ],
+    [
+        'nome'  => 'Rafael Almeida',
+        'empresa' => 'Coordenador de Marketing • Grupo Vértice',
+        'tempo' => 'há 1 mês',
+        'avatar' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&h=96&q=80',
+        'texto' => 'Atendimento ágil e consultivo: sugeriram alternativas econômicas dentro do orçamento mantendo alta durabilidade. Recomendo de olhos fechados.',
+    ],
+    [
+        'nome'  => 'Juliana Ferreira',
+        'empresa' => 'Analista de Eventos • PharmaPlus',
+        'tempo' => 'há 3 semanas',
+        'avatar' => 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=96&h=96&q=80',
+        'texto' => 'Catálogo amplo e atendimento altamente qualificado. Viramos clientes recorrentes para todos os nossos eventos corporativos.',
+    ],
+    [
+        'nome'  => 'Bruno Carvalho',
+        'empresa' => 'Diretor Comercial • Laborsan',
+        'tempo' => 'há 2 meses',
+        'avatar' => 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=96&h=96&q=80',
+        'texto' => 'Brindes de altíssima qualidade e a personalização ficou idêntica à nossa marca. A logística foi monitorada do início ao fim.',
+    ],
+    [
+        'nome'  => 'Camila Rodrigues',
+        'empresa' => 'Gerente de Endomarketing • Sesc',
+        'tempo' => 'há 1 semana',
+        'avatar' => 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=96&h=96&q=80',
+        'texto' => 'Pedimos garrafas térmicas e canecas para a campanha interna e o resultado superou as expectativas. Equipe super atenciosa!',
+    ],
+    [
+        'nome'  => 'Eduardo Martins',
+        'empresa' => 'Sócio • Cebrace',
+        'tempo' => 'há 1 mês',
+        'avatar' => 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=96&h=96&q=80',
+        'texto' => 'Cotação rápida, prazos cumpridos e acabamento premium nos cadernos personalizados. Parceria que virou recorrente.',
+    ],
+    [
+        'nome'  => 'Patrícia Lima',
+        'empresa' => 'Compras • União Química',
+        'tempo' => 'há 5 dias',
+        'avatar' => 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=96&h=96&q=80',
+        'texto' => 'Excelente custo-benefício para grandes volumes sem perder qualidade. O time consultivo entendeu exatamente o que precisávamos.',
+    ],
+    [
+        'nome'  => 'Felipe Souza',
+        'empresa' => 'Gerente de Projetos • Baker Hughes',
+        'tempo' => 'há 3 meses',
+        'avatar' => 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=96&h=96&q=80',
+        'texto' => 'Mochilas executivas impecáveis para a nossa convenção anual. Profissionalismo do orçamento à entrega. Nota dez!',
+    ],
+];
+?>
+<section class="max-w-7xl mx-auto px-6 py-10 border-t border-surface-container/50 select-none mb-8" id="reviews-section">
+    <!-- Cabeçalho estilo Google Reviews -->
     <div class="text-center mb-12">
-        <span class="text-primary font-bold uppercase tracking-wider text-xs">Casos de Sucesso</span>
-        <h2 class="text-3xl font-black text-on-surface tracking-tighter mt-1">Por que escolher a Novare Brindes?</h2>
-        <p class="text-slate-500 text-sm mt-1">Quem já comprou kits e brindes personalizados conosco aprova a qualidade e a pontualidade técnica.</p>
+        <h2 class="text-3xl font-black text-on-surface tracking-tighter">O que nossos clientes dizem</h2>
+        <div class="flex items-center justify-center gap-2 mt-3 flex-wrap">
+            <span class="flex gap-0.5 text-rose-400">
+                <span class="material-symbols-outlined text-xl font-fill" style="font-variation-settings: 'FILL' 1;">star</span>
+                <span class="material-symbols-outlined text-xl font-fill" style="font-variation-settings: 'FILL' 1;">star</span>
+                <span class="material-symbols-outlined text-xl font-fill" style="font-variation-settings: 'FILL' 1;">star</span>
+                <span class="material-symbols-outlined text-xl font-fill" style="font-variation-settings: 'FILL' 1;">star</span>
+                <span class="material-symbols-outlined text-xl font-fill" style="font-variation-settings: 'FILL' 1;">star</span>
+            </span>
+            <span class="text-sm font-bold text-slate-700"><strong class="font-black">4,9</strong> no Google</span>
+            <span class="text-slate-300">•</span>
+            <span class="text-sm font-semibold text-slate-500">77 avaliações verificadas</span>
+        </div>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div class="bg-white border border-surface-container rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
-            <div class="text-sky-500 mb-4 flex gap-0.5">
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
+
+    <!-- Carrossel horizontal de depoimentos -->
+    <div class="flex gap-6 overflow-x-auto py-4 px-1 no-scrollbar scroll-smooth snap-x snap-mandatory" id="reviews-carousel">
+        <?php foreach ($depoimentos as $d): ?>
+            <div class="min-w-[300px] sm:min-w-[340px] max-w-[340px] snap-start bg-white border border-surface-container rounded-3xl p-7 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                <!-- Topo: avatar + nome + selo Google -->
+                <div class="flex items-center gap-3 mb-4">
+                    <img src="<?= e($d['avatar']) ?>" alt="<?= e($d['nome']) ?>" class="w-11 h-11 rounded-full object-cover border border-surface-container flex-shrink-0" loading="lazy" width="44" height="44">
+                    <div class="min-w-0 flex-grow">
+                        <strong class="block text-sm font-black text-slate-800 truncate"><?= e($d['nome']) ?></strong>
+                        <span class="block text-[10px] text-slate-400 font-semibold truncate"><?= e($d['empresa']) ?></span>
+                    </div>
+                    <svg viewBox="0 0 24 24" class="w-5 h-5 flex-shrink-0" aria-label="Google" role="img">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
+                    </svg>
+                </div>
+                <!-- Estrelas + tempo -->
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="flex gap-0.5 text-rose-400">
+                        <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">star</span>
+                    </span>
+                    <span class="text-[10px] text-slate-400 font-semibold"><?= e($d['tempo']) ?></span>
+                </div>
+                <!-- Texto -->
+                <p class="text-slate-600 text-xs leading-relaxed"><?= e($d['texto']) ?></p>
             </div>
-            <p class="text-slate-600 text-xs leading-relaxed mb-6 italic">“Montaram nosso kit de onboarding com identidade impecável e entregaram no prazo apertado da convenção.”</p>
-            <div class="text-[9px] font-black text-slate-800 uppercase tracking-widest border-t border-slate-100 pt-4 block">— Gerência de RH, multinacional de tecnologia</div>
-        </div>
-        <div class="bg-white border border-surface-container rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
-            <div class="text-sky-500 mb-4 flex gap-0.5">
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-            </div>
-            <p class="text-slate-600 text-xs leading-relaxed mb-6 italic">“Atendimento ágil e consultivo: sugeriram alternativas econômicas dentro do orçamento mantendo alta durabilidade.”</p>
-            <div class="text-[9px] font-black text-slate-800 uppercase tracking-widest border-t border-slate-100 pt-4 block">— Marketing, rede varejista</div>
-        </div>
-        <div class="bg-white border border-surface-container rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
-            <div class="text-sky-500 mb-4 flex gap-0.5">
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-                <span class="material-symbols-outlined text-2xl font-fill">star</span>
-            </div>
-            <p class="text-slate-600 text-xs leading-relaxed mb-6 italic">“Catálogo amplo e atendimento altamente qualificado e ágil. Viramos clientes recorrentes para todos os eventos.”</p>
-            <div class="text-[9px] font-black text-slate-800 uppercase tracking-widest border-t border-slate-100 pt-4 block">— Eventos, indústria farmacêutica</div>
-        </div>
+        <?php endforeach; ?>
+    </div>
+
+    <!-- Navegação: setas circulares + botão central coral -->
+    <div class="flex items-center justify-center gap-4 mt-10">
+        <button type="button" onclick="document.getElementById('reviews-carousel').scrollBy({left: -360, behavior: 'smooth'})" class="w-11 h-11 rounded-full border border-surface-container hover:bg-slate-50 active:scale-95 flex items-center justify-center cursor-pointer transition-all shadow-sm bg-white text-slate-600" aria-label="Avaliações anteriores">
+            <span class="material-symbols-outlined text-lg font-bold">arrow_back</span>
+        </button>
+        <a href="<?= e($googleReviewsUrl) ?>" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-white text-[11px] font-black uppercase tracking-wider px-7 py-3.5 rounded-full shadow-md hover:scale-105 active:scale-95 transition-all" style="background: linear-gradient(135deg, #ff6f61 0%, #ff8a65 100%);">
+            <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">reviews</span>
+            Ver todas as avaliações no Google
+        </a>
+        <button type="button" onclick="document.getElementById('reviews-carousel').scrollBy({left: 360, behavior: 'smooth'})" class="w-11 h-11 rounded-full border border-surface-container hover:bg-slate-50 active:scale-95 flex items-center justify-center cursor-pointer transition-all shadow-sm bg-white text-slate-600" aria-label="Próximas avaliações">
+            <span class="material-symbols-outlined text-lg font-bold">arrow_forward</span>
+        </button>
     </div>
 </section>
 
@@ -1009,11 +1165,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function startTimer() {
             stopTimer();
-            timer = setInterval(nextSlide, 5000);
+            if (slides.length <= 1) return;
+            const delay = parseInt(slides[current].getAttribute('data-duration')) || 5000;
+            timer = setTimeout(function() {
+                nextSlide();
+                startTimer();
+            }, delay);
         }
 
         function stopTimer() {
-            if (timer) clearInterval(timer);
+            if (timer) clearTimeout(timer);
         }
 
         bullets.forEach(function (b, idx) {

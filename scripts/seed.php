@@ -19,6 +19,7 @@ if (PHP_SAPI !== 'cli') {
 
 require_once __DIR__ . '/../app/config/env.php';
 require_once __DIR__ . '/../app/config/Database.php';
+require_once __DIR__ . '/../app/services/ProductMapper.php';
 
 Env::load();
 $pdo = Database::connection();
@@ -34,11 +35,11 @@ $demo = [
 ];
 
 $insertProduto = $pdo->prepare(
-    'INSERT INTO produtos (sku_pai, nome, descricao, categoria, material, preco_base, quantidade_minima, sustentavel, imagem_principal, ativo)
-     VALUES (:sku, :nome, :desc, :cat, :mat, :preco, :qmin, :sus, :img, 1)
+    'INSERT INTO produtos (sku_pai, nome, descricao, categoria, material, preco_base, quantidade_minima, sustentavel, imagem_principal, tags, ativo)
+     VALUES (:sku, :nome, :desc, :cat, :mat, :preco, :qmin, :sus, :img, :tags, 1)
      ON DUPLICATE KEY UPDATE nome=VALUES(nome), descricao=VALUES(descricao), categoria=VALUES(categoria),
         material=VALUES(material), preco_base=VALUES(preco_base), quantidade_minima=VALUES(quantidade_minima),
-        sustentavel=VALUES(sustentavel), imagem_principal=VALUES(imagem_principal), ativo=1'
+        sustentavel=VALUES(sustentavel), imagem_principal=VALUES(imagem_principal), tags=VALUES(tags), ativo=1'
 );
 
 $findProduto = $pdo->prepare('SELECT id FROM produtos WHERE sku_pai = :sku');
@@ -59,9 +60,11 @@ foreach ($demo as [$sku, $nome, $desc, $cat, $mat, $preco, $qmin, $sus, $sufixos
     // imagem principal placeholder (cor do tema por sku)
     $imgPrincipal = "https://picsum.photos/seed/novare{$sku}/600/600";
 
+    $tags = ProductMapper::gerarTags($cat ?? '', $nome ?? '', $desc ?? '');
     $insertProduto->execute([
         ':sku' => $sku, ':nome' => $nome, ':desc' => $desc, ':cat' => $cat,
         ':mat' => $mat, ':preco' => $preco, ':qmin' => $qmin, ':sus' => $sus, ':img' => $imgPrincipal,
+        ':tags' => $tags,
     ]);
     $findProduto->execute([':sku' => $sku]);
     $produtoId = (int) $findProduto->fetchColumn();
@@ -95,7 +98,9 @@ foreach ($demo as [$sku, $nome, $desc, $cat, $mat, $preco, $qmin, $sus, $sufixos
     }
 }
 
+// Remove produtos órfãos ou sem imagem principal
+$pdo->exec("DELETE FROM produtos WHERE imagem_principal IS NULL OR imagem_principal = '';");
 $pdo->commit();
 
-echo "✓ Seed concluído: {$nProd} produtos-pai e {$nVar} variações de demonstração.\n";
+echo "✓ Seed concluído: {$nProd} produtos-pai e {$nVar} variações de demonstração (produtos sem imagem foram limpos).\n";
 echo "  (sku_pai na faixa 9000x — remova antes de ir para produção)\n";

@@ -36,8 +36,10 @@
         const cta = document.getElementById('cta-whats');
         const swatches = Array.from(document.querySelectorAll('#color-swatches button'));
 
-        function montarMsg(cor, sku) {
-            return 'Tenho interesse no produto: ' + nome + ' — cor ' + cor + ' (cód. ' + sku + ') — ' + urlProduto;
+        function montarMsg(img) {
+            var msg = 'Olá, tudo bem? Gostaria de fazer um orçamento de ' + nome;
+            if (img) msg += ' (' + img + ')';
+            return msg + ', poderia me ajudar?';
         }
 
         // Definição dos 5 ângulos de fallback com seus estilos CSS e tooltips descritivos em português (Aprovado em /grill-me)
@@ -145,9 +147,10 @@
             if (corAtiva) corAtiva.textContent = v.cor || '';
             if (skuAtivo) skuAtivo.textContent = v.sku || '';
 
-            // CTA WhatsApp da variação ativa
+            // CTA WhatsApp da variação ativa (usa a imagem da cor selecionada)
             if (cta && whats) {
-                cta.href = 'https://wa.me/' + whats + '?text=' + encodeURIComponent(montarMsg(v.cor || '', v.sku || ''));
+                var imgVar = (v.imagens && v.imagens[0]) || (imgMain ? imgMain.src : '');
+                cta.href = 'https://wa.me/' + whats + '?text=' + encodeURIComponent(montarMsg(imgVar));
             }
 
             swatches.forEach(function (s) { s.classList.remove('active'); });

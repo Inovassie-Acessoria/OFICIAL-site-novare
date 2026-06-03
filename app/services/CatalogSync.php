@@ -108,13 +108,13 @@ final class CatalogSync
 
         $upProduto = $pdo->prepare(
             'INSERT INTO produtos
-                (sku_pai, nome, descricao, categoria, material, preco_base, sustentavel, imagem_principal, ativo, synced_at)
-             VALUES (:sku, :nome, :desc, :cat, :mat, :preco, :sus, :img, 1, :sy)
+                (sku_pai, nome, descricao, categoria, material, preco_base, sustentavel, imagem_principal, tags, ativo, synced_at)
+             VALUES (:sku, :nome, :desc, :cat, :mat, :preco, :sus, :img, :tags, 1, :sy)
              ON DUPLICATE KEY UPDATE
                 id = LAST_INSERT_ID(id),
                 nome = VALUES(nome), descricao = VALUES(descricao), categoria = VALUES(categoria),
                 material = VALUES(material), preco_base = VALUES(preco_base), sustentavel = VALUES(sustentavel),
-                imagem_principal = VALUES(imagem_principal), ativo = 1, synced_at = VALUES(synced_at)'
+                imagem_principal = VALUES(imagem_principal), tags = VALUES(tags), ativo = 1, synced_at = VALUES(synced_at)'
         );
 
         $upVariacao = $pdo->prepare(
@@ -171,14 +171,20 @@ final class CatalogSync
                     }
                 }
 
+                // Se o produto não contiver imagem principal, pulamos completamente o seu cadastro
+                if ($imgPrincipal === null || $imgPrincipal === '') {
+                    continue;
+                }
+
                 $categoria   = ProductMapper::categoria($nome);
                 $material    = ProductMapper::material($nome, $descricao);
                 $sustentavel = ProductMapper::sustentavel($nome, $descricao) ? 1 : 0;
+                $tags        = ProductMapper::gerarTags($categoria, $nome, $descricao);
 
                 $upProduto->execute([
                     ':sku' => $skuPai, ':nome' => $nome, ':desc' => $descricao !== '' ? $descricao : null,
                     ':cat' => $categoria, ':mat' => $material, ':preco' => $precoBase,
-                    ':sus' => $sustentavel, ':img' => $imgPrincipal, ':sy' => $syncStamp,
+                    ':sus' => $sustentavel, ':img' => $imgPrincipal, ':tags' => $tags, ':sy' => $syncStamp,
                 ]);
                 $produtoId = (int) $pdo->lastInsertId();
                 $upProduto->rowCount() === 1 ? $c['pais_ins']++ : $c['pais_upd']++;
@@ -218,6 +224,8 @@ final class CatalogSync
                 }
             }
 
+            // Limpeza definitiva física de produtos sem imagem
+            $pdo->exec("DELETE FROM produtos WHERE imagem_principal IS NULL OR imagem_principal = '';");
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {

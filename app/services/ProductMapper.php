@@ -181,4 +181,54 @@ final class ProductMapper
         }
         return 'UNICO';
     }
+
+    /**
+     * Gera uma string de tags (palavras-chaves e sinônimos) para otimizar e ampliar a busca do produto.
+     */
+    public static function gerarTags(string $categoria, string $nome, string $descricao = ''): string
+    {
+        $tags = [];
+        $textoComp = self::normalizar($nome . ' ' . $categoria . ' ' . $descricao);
+
+        // Sinônimos por categoria
+        $sinonimosCategorias = [
+            'ESCRITA' => ['CANETA', 'LAPIS', 'LAPISEIRA', 'ESFEROGRAFICA', 'PAPELARIA', 'ESCRITORIO', 'ROLLER', 'MARCADOR', 'GIZ', 'PENA', 'DESENHO', 'ANOTACOES'],
+            'CADERNOS E AGENDAS' => ['CADERNO', 'CADERNETA', 'BLOCO', 'PLANNER', 'AGENDA', 'CALENDARIO', 'SKETCHBOOK', 'MOLESKINE', 'PAPELARIA', 'NOTAS', 'DIARIO', 'REGISTRO', 'ESCRITORIO'],
+            'BOLSAS E MOCHILAS' => ['BOLSA', 'MOCHILA', 'SACOLA', 'SACOCHILA', 'MALA', 'POCHETE', 'NECESSAIRE', 'FRASQUEIRA', 'ECOBAG', 'VIAGEM', 'TRANSPORTE', 'ACADEMIA', 'BAG', 'MALETA'],
+            'GARRAFAS E SQUEEZES' => ['GARRAFA', 'SQUEEZE', 'COQUETELEIRA', 'GALAO', 'ACADEMIA', 'ESPORTE', 'HIDRATACAO', 'TERMICA', 'COPO', 'CANECA', 'CANTIL', 'BEBIDA', 'AGUA'],
+            'CANECAS E COPOS' => ['CANECA', 'COPO', 'XICARA', 'TUMBLER', 'STANLEY', 'BEBIDA', 'CAFE', 'TERMICOS', 'XICARA', 'PINT', 'CHAMPANHE', 'CERVEJA'],
+            'TECNOLOGIA' => ['FONE', 'MOUSE', 'POWER', 'PENDRIVE', 'CARREGADOR', 'SPEAKER', 'LANTERNA', 'HUB', 'WEBCAM', 'CABO', 'RELOGIO', 'SMARTWATCH', 'UMIDIFICADOR', 'ELETRONICO', 'GIFT', 'DIAL', 'HEADSET'],
+            'KITS E CONJUNTOS' => ['KIT', 'CONJUNTO', 'JOGO', 'ONBOARDING', 'BOAS VINDAS', 'CORPORATIVO', 'INTEGRACAO', 'PRESENTE', 'CAIXA', 'WELCOME', 'BOAS-VINDAS'],
+        ];
+
+        $catUpper = self::normalizar($categoria);
+        if (isset($sinonimosCategorias[$catUpper])) {
+            $tags = array_merge($tags, $sinonimosCategorias[$catUpper]);
+        }
+
+        // Busca por palavras-chave específicas e injeta sinônimos correspondentes
+        $sinonimosTermos = [
+            'MOCHILA' => ['MALETA', 'MOCHILAS', 'BAG', 'PASTA', 'CAMPING', 'TRILHA', 'EXECUTIVA'],
+            'ECOBAG' => ['SACOLA', 'ALGODAO', 'SUSTENTAVEL', 'ECOLOGICA', 'REUTILIZAVEL'],
+            'CANETA' => ['ESFEROGRAFICA', 'CANETAS', 'ESCRITA', 'LAPIS', 'BRINDE'],
+            'CADERNO' => ['CADERNETA', 'CADERNOS', 'BLOCO', 'ANOTACOES', 'DIARIO'],
+            'GARRAFA' => ['GARRAFAS', 'SQUEEZE', 'SQUEEZES', 'TERMICA', 'TERMICO', 'BEBIDA', 'CANTIL'],
+            'COPO' => ['COPOS', 'STANLEY', 'CANECA', 'CANECAS', 'XICARA', 'TERMICO'],
+            'TECNOLOGIA' => ['CARREGADOR', 'FONTE', 'POWERBANK', 'CABO', 'CELULAR', 'SMARTPHONE', 'WIRELESS', 'INDUCACAO', 'INDUCAO'],
+            'ONBOARDING' => ['KIT', 'BOAS VINDAS', 'BOAS-VINDAS', 'INTEGRACAO', 'COLABORADOR'],
+            'CHAVEIRO' => ['CHAVEIROS', 'ACESSORIO', 'PINGENTE', 'MOSQUETAO'],
+            'TERMICA' => ['TERMICO', 'VACUO', 'TEMPERATURA', 'QUENTE', 'FRIO', 'CONSERVACAO'],
+        ];
+
+        foreach ($sinonimosTermos as $kw => $sinonimos) {
+            if (str_contains($textoComp, $kw)) {
+                $tags = array_merge($tags, $sinonimos);
+            }
+        }
+
+        // Limpa palavras vazias, duplicados e junta em string única separada por espaços
+        $tags = array_unique(array_filter($tags));
+        
+        return implode(' ', $tags);
+    }
 }

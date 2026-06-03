@@ -12,13 +12,16 @@ if (!$cats) {
         $cats = [];
     }
 }
+// Logo gerenciável pelo painel admin (cai no padrão se não configurado).
+$logoUrl = SiteContent::logo();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= e($titulo ?? 'Novare Brindes — Brindes Corporativos') ?></title>
+    <title><?= e(isset($titulo) ? $titulo . ' | Novare Brindes Corporativos' : 'Novare Brindes Corporativos') ?></title>
+    <link rel="icon" type="image/png" href="<?= url('/assets/images/favicon.png') ?>">
     <meta name="description" content="Brindes corporativos personalizados para eventos, feiras e kits de onboarding. Atendimento de alta excelência e inteligência de marca.">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -115,7 +118,7 @@ if (!$cats) {
             <!-- Brand & Search Row -->
             <div class="flex items-center justify-between w-full md:w-auto gap-8">
                 <a href="<?= url('/') ?>" class="flex items-center">
-                    <img alt="Novare Brindes" class="h-10 w-auto object-contain" src="https://novarebrindes.com.br/wp-content/uploads/2025/10/LOGO-IMAGEM-1.png" />
+                    <img alt="Novare Brindes" class="h-10 w-auto object-contain" src="<?= e($logoUrl) ?>" />
                 </a>
             </div>
 
@@ -131,7 +134,7 @@ if (!$cats) {
 
             <!-- Actions Row -->
             <div class="flex items-center gap-6">
-                <a href="<?= e(whatsappLink('Olá! Gostaria de falar com o time de atendimento da Novare.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap hidden xl:block shadow-sm hover:opacity-90 transition-opacity">
+                <a href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap hidden xl:block shadow-sm hover:opacity-90 transition-opacity">
                     Fale com o Nosso Time &gt;
                 </a>
                 <div class="flex items-center gap-5 text-secondary">
@@ -209,7 +212,7 @@ if (!$cats) {
                 <!-- Brand Column -->
                 <div class="col-span-1">
                     <a href="<?= url('/') ?>" class="inline-block mb-4">
-                        <img alt="Novare Brindes" class="h-10 w-auto object-contain brightness-0 invert" src="https://novarebrindes.com.br/wp-content/uploads/2025/10/LOGO-IMAGEM-1.png" />
+                        <img alt="Novare Brindes" class="h-10 w-auto object-contain brightness-0 invert" src="<?= e($logoUrl) ?>" />
                     </a>
                     <p class="text-slate-400 text-xs leading-relaxed mb-6">
                         Seleção sob medida. Elevando o valor e a percepção da sua marca através de brindes personalizados e presentes corporativos desenvolvidos com excelência técnica para sua empresa, do popular ao executivo.
@@ -232,14 +235,14 @@ if (!$cats) {
                     <ul class="space-y-3">
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/sobre') ?>">Nossa História</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="https://rastreamento.correios.com.br/app/index.php" target="_blank" rel="noopener">Rastrear Entrega</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= e(whatsappLink('Olá! Gostaria de falar com o time de atendimento da Novare.')) ?>" target="_blank" rel="noopener">Fale com o Nosso Time</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">Fale com o Nosso Time</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo') ?>">Ver Todos os Produtos</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-xs uppercase tracking-widest font-bold mb-6 text-white border-l-2 border-primary pl-3">Contato & Briefing</h4>
                     <ul class="space-y-3">
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider font-semibold" href="<?= e(whatsappLink('Olá! Gostaria de falar com o time consultivo da Novare.')) ?>" target="_blank" rel="noopener">WhatsApp Comercial</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider font-semibold" href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">WhatsApp Comercial</a></li>
                         <li class="text-slate-500 text-[10px] mt-2 uppercase tracking-wide leading-relaxed">Atendimento rápido<br>Segunda a Sexta-Feira<br>Horário Comercial</li>
                     </ul>
                 </div>

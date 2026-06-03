@@ -71,7 +71,7 @@ $c = $conteudos[$pagina] ?? $conteudos['sobre'];
 
         <!-- WhatsApp CTA -->
         <div class="text-center mt-16">
-            <a href="<?= e(whatsappLink('Olá! Gostaria de falar com o time corporativo da Novare.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-10 py-4 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg hover:opacity-95 transition-opacity inline-flex items-center gap-2.5">
+            <a href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-10 py-4 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg hover:opacity-95 transition-opacity inline-flex items-center gap-2.5">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.8.9.9-2.7-.2-.3A8 8 0 1 1 12 20zm4.5-5.9c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2.1-.2 0-.3 0-.4l-.8-1.9c-.2-.5-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.7.7-.9 1.7-.6 2.8.5 1.6 1.6 3 3.1 4 .9.5 1.6.8 2.1.9.7.2 1.4.2 1.9.1.6-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1 0-.1-.2-.2-.4-.3z"/></svg>
                 Falar com um Consultor Comercial
             </a>
