@@ -156,7 +156,7 @@ $logoUrl = SiteContent::logo();
         <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
             <div class="flex items-center gap-6 overflow-x-auto no-scrollbar py-2 w-full lg:w-auto">
                 <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= empty(q('categoria')) && empty(q('sustentavel')) && !str_contains($_SERVER['REQUEST_URI'], '/sobre') && !str_contains($_SERVER['REQUEST_URI'], '/atendimento') ? 'text-primary font-bold border-b-2 border-primary pb-1' : '' ?>" href="<?= url('/catalogo') ?>">Novidades</a>
-                <?php foreach (array_slice($cats, 0, 7) as $c): ?>
+                <?php foreach (array_slice($cats, 0, 9) as $c): ?>
                     <?php 
                         $active = (q('categoria') === $c['categoria']) ? 'text-primary font-bold border-b-2 border-primary pb-1' : ''; 
                     ?>
@@ -224,10 +224,12 @@ $logoUrl = SiteContent::logo();
                     <h4 class="text-xs uppercase tracking-widest font-bold mb-6 text-white border-l-2 border-primary pl-3">Principais Categorias</h4>
                     <ul class="space-y-3">
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('BOLSAS E MOCHILAS')) ?>">Mochilas e Bolsas</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('ESCRITA')) ?>">Canetas e Lápis</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('CANETAS')) ?>">Canetas</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('GARRAFAS E SQUEEZES')) ?>">Garrafas e Squeezes</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('KITS E CONJUNTOS')) ?>">Kits de Onboarding</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('CADERNOS E AGENDAS')) ?>">Moleskines e Cadernos</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('MOLESKINE & CADERNOS')) ?>">Moleskine & Cadernos</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('MOUSE PADS')) ?>">Mouse Pads</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('CARTEIRAS')) ?>">Carteiras</a></li>
                     </ul>
                 </div>
                 <div>

@@ -13,11 +13,11 @@ $pdo = Database::connection();
 $stmtImg = $pdo->prepare("SELECT imagem_principal FROM produtos WHERE categoria = :cat AND ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' LIMIT 1");
 
 // Top 10 Canetas (Escrita)
-$stmtCanetas = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'ESCRITA' OR nome LIKE '%caneta%' OR nome LIKE '%lapiseira%' OR nome LIKE '%roller%') ORDER BY id ASC LIMIT 10");
+$stmtCanetas = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'CANETAS' OR categoria = 'ESCRITA' OR nome LIKE '%caneta%' OR nome LIKE '%lapiseira%' OR nome LIKE '%roller%') ORDER BY id ASC LIMIT 10");
 $topCanetas = $stmtCanetas->fetchAll();
 
 // Top 10 Cadernos / Agendas / Moleskine
-$stmtCadernos = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'CADERNOS E AGENDAS' OR nome LIKE '%caderno%' OR nome LIKE '%caderneta%' OR nome LIKE '%agenda%' OR nome LIKE '%moleskine%' OR nome LIKE '%planner%') ORDER BY id ASC LIMIT 10");
+$stmtCadernos = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'MOLESKINE & CADERNOS' OR categoria = 'CADERNOS E AGENDAS' OR nome LIKE '%caderno%' OR nome LIKE '%caderneta%' OR nome LIKE '%agenda%' OR nome LIKE '%moleskine%' OR nome LIKE '%planner%') ORDER BY id ASC LIMIT 10");
 $topCadernos = $stmtCadernos->fetchAll();
 
 // Top 10 Garrafas
@@ -43,12 +43,14 @@ foreach (['top_canetas' => 'topCanetas', 'top_cadernos' => 'topCadernos', 'top_g
 
 // Mapeamento e ordenação explícita das categorias na Home
 $ordemCategorias = [
-    'ESCRITA', 
-    'CADERNOS E AGENDAS', 
+    'CANETAS', 
+    'MOLESKINE & CADERNOS', 
     'BOLSAS E MOCHILAS', 
     'GARRAFAS E SQUEEZES', 
     'CANECAS E COPOS', 
     'TECNOLOGIA', 
+    'MOUSE PADS',
+    'CARTEIRAS',
     'DIVERSOS'
 ];
 
@@ -79,11 +81,21 @@ if ($categorias) {
 <?php if ($categoriasOrdenadas): ?>
 <section class="py-10 bg-white border-b border-surface-container/30 select-none">
     <div class="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6 overflow-x-auto no-scrollbar">
-        <?php foreach (array_slice($categoriasOrdenadas, 0, 7) as $cat): 
+        <?php foreach (array_slice($categoriasOrdenadas, 0, 9) as $cat): 
             $nomeCat = $cat['categoria'];
             
-            // Busca a imagem real do produto no banco para esta categoria
-            if (strtoupper($nomeCat) === 'BOLSAS E MOCHILAS') {
+            // Busca a imagem real do produto no banco para esta categoria com forçados específicos
+            if (strtoupper($nomeCat) === 'CANETAS') {
+                $imgCat = 'https://cdn.xbzbrindes.com.br/img/produtos/3/12172-PRE-Caneta-Bambu-222.jpg';
+            } elseif (strtoupper($nomeCat) === 'MOLESKINE & CADERNOS') {
+                $imgCat = 'https://cdn.xbzbrindes.com.br/img/produtos/3/Caderneta-em-PU-PRETO-22045-1737734750.jpg';
+            } elseif (strtoupper($nomeCat) === 'TECNOLOGIA') {
+                $imgCat = 'https://cdn.xbzbrindes.com.br/img/produtos/3/Mouse-Sem-Fio-PRETO-26133-1763485910.jpg';
+            } elseif (strtoupper($nomeCat) === 'MOUSE PADS') {
+                $imgCat = asset('images/cat_mousepads.png');
+            } elseif (strtoupper($nomeCat) === 'CARTEIRAS') {
+                $imgCat = asset('images/cat_carteiras.png');
+            } elseif (strtoupper($nomeCat) === 'BOLSAS E MOCHILAS') {
                 // Força imagem que contenha mochila no nome para a categoria correspondente
                 $stmtImgMochila = $pdo->prepare("SELECT imagem_principal FROM produtos WHERE categoria = 'BOLSAS E MOCHILAS' AND nome LIKE '%mochila%' AND ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' LIMIT 1");
                 $stmtImgMochila->execute();
@@ -95,12 +107,14 @@ if ($categorias) {
             
             // Fallback caso não tenha imagem no banco ou esteja vazio
             $fallbacksCategorias = [
-                'ESCRITA' => 'cat_canetas.png',
-                'CADERNOS E AGENDAS' => 'cat_moleskine.png',
+                'CANETAS' => 'cat_canetas.png',
+                'MOLESKINE & CADERNOS' => 'cat_moleskine.png',
                 'BOLSAS E MOCHILAS' => 'cat_mochilas.png',
                 'GARRAFAS E SQUEEZES' => 'cat_garrafas.png',
                 'CANECAS E COPOS' => 'cat_canecas.png',
                 'TECNOLOGIA' => 'cat_onboarding.png',
+                'MOUSE PADS' => 'cat_mousepads.png',
+                'CARTEIRAS' => 'cat_carteiras.png',
                 'DIVERSOS' => 'banner_presentes.png'
             ];
             
@@ -216,117 +230,46 @@ if ($categorias) {
 
 <!-- Benefícios & Diferenciais Corporativos -->
 <section class="max-w-7xl mx-auto px-6 mb-16 select-none">
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-4 py-8 px-6 bg-white border border-surface-container rounded-3xl shadow-sm text-center">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-6 py-12 px-8 bg-white border border-surface-container rounded-3xl shadow-md text-center">
         <!-- Benefício 1: Segurança -->
-        <div class="flex flex-col items-center gap-2 p-2">
-            <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-xl">verified_user</span>
+        <div class="flex flex-col items-center gap-3 p-2">
+            <div class="w-14 h-14 rounded-2xl bg-sky-50 flex items-center justify-center text-primary transition-transform hover:scale-110 duration-300">
+                <span class="material-symbols-outlined text-3xl">verified_user</span>
             </div>
-            <h4 class="text-[10px] font-black uppercase tracking-wider text-slate-800 mt-1">Entrega 100% Segura</h4>
-            <p class="text-[9px] text-slate-400 font-semibold uppercase leading-tight max-w-[120px]">Logística monitorada e garantida</p>
+            <h4 class="text-xs font-black uppercase tracking-wider text-slate-800 mt-1">Entrega 100% Segura</h4>
+            <p class="text-[10px] text-slate-400 font-semibold uppercase leading-tight max-w-[140px]">Logística monitorada e garantida</p>
         </div>
         <!-- Benefício 2: Pix -->
-        <div class="flex flex-col items-center gap-2 p-2">
-            <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-xl">qr_code_2</span>
+        <div class="flex flex-col items-center gap-3 p-2">
+            <div class="w-14 h-14 rounded-2xl bg-sky-50 flex items-center justify-center text-primary transition-transform hover:scale-110 duration-300">
+                <span class="material-symbols-outlined text-3xl">qr_code_2</span>
             </div>
-            <h4 class="text-[10px] font-black uppercase tracking-wider text-slate-800 mt-1">Pagamento no Pix</h4>
-            <p class="text-[9px] text-slate-400 font-semibold uppercase leading-tight max-w-[120px]">Faturamento rápido e descontos à vista</p>
+            <h4 class="text-xs font-black uppercase tracking-wider text-slate-800 mt-1">Pagamento no Pix</h4>
+            <p class="text-[10px] text-slate-400 font-semibold uppercase leading-tight max-w-[140px]">Faturamento rápido e descontos à vista</p>
         </div>
         <!-- Benefício 3: Cartão -->
-        <div class="flex flex-col items-center gap-2 p-2">
-            <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-xl">credit_card</span>
+        <div class="flex flex-col items-center gap-3 p-2">
+            <div class="w-14 h-14 rounded-2xl bg-sky-50 flex items-center justify-center text-primary transition-transform hover:scale-110 duration-300">
+                <span class="material-symbols-outlined text-3xl">credit_card</span>
             </div>
-            <h4 class="text-[10px] font-black uppercase tracking-wider text-slate-800 mt-1">Pagamento no Cartão</h4>
-            <p class="text-[9px] text-slate-400 font-semibold uppercase leading-tight max-w-[120px]">Parcelamento sob medida</p>
+            <h4 class="text-xs font-black uppercase tracking-wider text-slate-800 mt-1">Pagamento no Cartão</h4>
+            <p class="text-[10px] text-slate-400 font-semibold uppercase leading-tight max-w-[140px]">Parcelamento sob medida</p>
         </div>
         <!-- Benefício 4: Frete Grátis -->
-        <div class="flex flex-col items-center gap-2 p-2">
-            <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-xl">local_shipping</span>
+        <div class="flex flex-col items-center gap-3 p-2">
+            <div class="w-14 h-14 rounded-2xl bg-sky-50 flex items-center justify-center text-primary transition-transform hover:scale-110 duration-300">
+                <span class="material-symbols-outlined text-3xl">local_shipping</span>
             </div>
-            <h4 class="text-[10px] font-black uppercase tracking-wider text-slate-800 mt-1">Frete Grátis *</h4>
-            <p class="text-[9px] text-slate-400 font-semibold uppercase leading-tight max-w-[120px]">Consulte condições para sua região</p>
+            <h4 class="text-xs font-black uppercase tracking-wider text-slate-800 mt-1">Frete Grátis *</h4>
+            <p class="text-[10px] text-slate-400 font-semibold uppercase leading-tight max-w-[140px]">Consulte condições para sua região</p>
         </div>
         <!-- Benefício 5: Atendimento -->
-        <div class="flex flex-col items-center gap-2 p-2 col-span-2 md:col-span-1">
-            <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-xl">support_agent</span>
+        <div class="flex flex-col items-center gap-3 p-2 col-span-2 md:col-span-1">
+            <div class="w-14 h-14 rounded-2xl bg-sky-50 flex items-center justify-center text-primary transition-transform hover:scale-110 duration-300">
+                <span class="material-symbols-outlined text-3xl">support_agent</span>
             </div>
-            <h4 class="text-[10px] font-black uppercase tracking-wider text-slate-800 mt-1">Fale com a nossa equipe</h4>
-            <p class="text-[9px] text-slate-400 font-semibold uppercase leading-tight max-w-[130px]">Consultores dedicados do início ao fim</p>
-        </div>
-    </div>
-</section>
-
-<!-- Partner Brands (Marcas Parceiras) — Carrossel infinito em loop -->
-<?php
-$marcasParceiras = [
-    ['brand_stanley.png', 'Stanley'],
-    ['brand_victorinox.png', 'Victorinox'],
-    ['brand_parker.png', 'Parker'],
-    ['brand_moleskine.png', 'Moleskine'],
-    ['brand_jbl.png', 'JBL'],
-    ['brand_tramontina.png', 'Tramontina'],
-];
-?>
-<style>
-@keyframes partner-marquee {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
-}
-.partner-marquee-track {
-    display: flex;
-    width: max-content;
-    animation: partner-marquee 32s linear infinite;
-}
-.partner-marquee-track:hover { animation-play-state: paused; }
-/* Cada logo vive num slot de largura fixa => espaçamento 100% uniforme,
-   independente da largura de cada marca. */
-.partner-slot {
-    flex: 0 0 auto;
-    width: 12rem;            /* 192px (mobile) */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.partner-logo {
-    max-height: 4rem;        /* 64px (mobile) */
-    max-width: 70%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    mix-blend-mode: multiply;  /* dissolve o fundo branco do PNG no bg claro -> logo transparente */
-    filter: grayscale(1);
-    opacity: 0.7;
-    transition: filter 0.4s ease, opacity 0.4s ease, transform 0.4s ease;
-}
-.partner-logo:hover {
-    filter: grayscale(0);
-    opacity: 1;
-    transform: scale(1.08);
-}
-@media (min-width: 768px) {
-    .partner-slot { width: 15rem; }     /* 240px (desktop) */
-    .partner-logo { max-height: 5.5rem; } /* 88px (desktop) */
-}
-</style>
-<section class="bg-surface-container-low py-12 border-y border-surface-container/30 mb-16 select-none overflow-hidden">
-    <div class="max-w-7xl mx-auto px-6 mb-8">
-        <h4 class="text-center text-[9px] uppercase tracking-[0.2em] font-extrabold text-slate-400">Marcas parceiras na nossa seleção</h4>
-    </div>
-    <div class="relative w-full flex overflow-hidden" style="mask-image: linear-gradient(to right, transparent, white 10%, white 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, white 10%, white 90%, transparent);">
-        <div class="partner-marquee-track">
-            <?php for ($r = 0; $r < 2; $r++): ?>
-                <div class="flex items-center"<?= $r === 1 ? ' aria-hidden="true"' : '' ?>>
-                    <?php foreach ($marcasParceiras as $m): ?>
-                        <div class="partner-slot">
-                            <img src="<?= asset('images/' . $m[0]) ?>" alt="<?= e($m[1]) ?>" class="partner-logo" loading="lazy">
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endfor; ?>
+            <h4 class="text-xs font-black uppercase tracking-wider text-slate-800 mt-1">Fale com a nossa equipe</h4>
+            <p class="text-[10px] text-slate-400 font-semibold uppercase leading-tight max-w-[150px]">Consultores dedicados do início ao fim</p>
         </div>
     </div>
 </section>
@@ -797,7 +740,7 @@ $marcasParceiras = [
         </div>
 
         <!-- Categoria 6: Canetas (Escrita) -->
-        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('ESCRITA')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
+        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('CANETAS')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
             <div class="absolute inset-0 bg-gradient-to-t from-[#006590]/50 via-[#006590]/15 to-transparent z-10"></div>
             <img class="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" alt="Canetas de Luxo Executivas" src="<?= asset('images/cat_canetas.png') ?>" loading="lazy" />
             <div class="absolute bottom-6 left-6 right-6 z-20 text-white">
@@ -809,170 +752,7 @@ $marcasParceiras = [
     </div>
 </section>
 
-<!-- Marcas que Confiam em Nós (Carrossel Infinito) -->
-<style>
-@keyframes infinite-scroll {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-}
-.animate-infinite-scroll {
-    display: flex;
-    animation: infinite-scroll 32s linear infinite;
-    width: max-content;
-}
-.animate-infinite-scroll:hover {
-    animation-play-state: paused;
-}
-</style>
-<section class="w-full bg-white py-14 border-t border-b border-surface-container/20 overflow-hidden select-none relative mb-16">
-    <div class="max-w-7xl mx-auto px-6 mb-10 text-center">
-        <h3 class="text-sm uppercase tracking-[0.25em] font-black text-slate-800">Empresas que confiam em nós</h3>
-    </div>
-    <!-- Contêiner do Carrossel com Máscara Gradiente nas Laterais -->
-    <div class="relative w-full flex overflow-hidden py-4" style="mask-image: linear-gradient(to right, transparent, white 15%, white 85%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, white 15%, white 85%, transparent);">
-        <div class="flex gap-28 items-center animate-infinite-scroll pr-28">
-            <!-- Baker Hughes -->
-            <div class="flex items-center gap-2.5 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-sm font-black tracking-tighter uppercase">Baker Hughes</span>
-                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
-                    <path d="M4 4h4l8 8-8 8H4l8-8zM10 4h4l6 6-6 6h-4l6-6z"/>
-                </svg>
-            </div>
-            <!-- União Química -->
-            <div class="flex items-center gap-2.5 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-12S17.52 2 12 2zm1 15h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/>
-                </svg>
-                <div class="flex flex-col leading-none">
-                    <span class="text-xs font-black tracking-tight uppercase">União Química</span>
-                    <span class="text-[6px] tracking-widest uppercase font-bold text-slate-400">Hospitalar</span>
-                </div>
-            </div>
-            <!-- Sesc -->
-            <div class="flex items-center gap-2 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-lg font-black italic tracking-tighter text-slate-500 uppercase leading-none">Sesc</span>
-                <svg class="w-7.5 h-4 fill-current" viewBox="0 0 24 12" style="width: 30px; height: 16px;">
-                    <path d="M0 6c4-6 8-6 12 0s8 6 12 0v2c-4 6-8 6-12 0S4 2 0 8z"/>
-                </svg>
-            </div>
-            <!-- LABORSAN -->
-            <div class="flex items-center gap-2 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <div class="flex flex-col leading-none text-right">
-                    <span class="text-xs font-black tracking-tighter uppercase">LABORSAN</span>
-                    <span class="text-[6px] tracking-widest uppercase font-black text-slate-400">AGRO</span>
-                </div>
-                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-12S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                </svg>
-            </div>
-            <!-- Cebrace -->
-            <div class="flex items-center text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300 border border-slate-200 px-3.5 py-1.5 rounded bg-slate-50/50">
-                <span class="text-sm font-black tracking-tight lowercase">cebrace</span>
-                <svg class="w-4.5 h-4.5 ml-1.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                    <path d="M2 12h20"/>
-                </svg>
-            </div>
-            <!-- Nestlé -->
-            <div class="flex items-center gap-1.5 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-sm font-extrabold tracking-tight uppercase">Nestlé</span>
-                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
-                    <path d="M12 3c-1.2 0-2.4.4-3.4 1.1-.5-.3-1.1-.5-1.7-.5-1.9 0-3.4 1.5-3.4 3.4 0 1.2.6 2.2 1.5 2.8C4.4 10.8 4 12.1 4 13.5c0 3.6 2.9 6.5 6.5 6.5 2 0 3.8-1 4.9-2.5 1.1 1.5 2.9 2.5 4.9 2.5 3.6 0 6.5-2.9 6.5-6.5 0-1.4-.4-2.7-1.1-3.7.9-.6 1.5-1.6 1.5-2.8 0-1.9-1.5-3.4-3.4-3.4-.6 0-1.2.2-1.7.5C21.1 3.4 19.9 3 18.7 3c-2.3 0-4.3 1.3-5.3 3.2-1-1.9-3-3.2-5.3-3.2z"/>
-                </svg>
-            </div>
-            <!-- Stanley -->
-            <div class="flex items-center gap-1.5 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-sm font-black tracking-widest uppercase">STANLEY</span>
-                <svg class="w-4.5 h-4.5 fill-current" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                    <path d="M12 2L2 22h20L12 2zm0 4l6.5 13h-13L12 6z"/>
-                </svg>
-            </div>
-            <!-- Moleskine -->
-            <div class="flex items-center text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-xs font-black tracking-[0.25em] uppercase">MOLESKINE</span>
-            </div>
-            <!-- Tramontina -->
-            <div class="flex items-center gap-2 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-xs font-black tracking-widest uppercase font-serif">TRAMONTINA</span>
-                <svg class="w-4.5 h-4.5 fill-current" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                </svg>
-            </div>
-        </div>
-        <!-- Duplicação idêntica para loop contínuo impecável -->
-        <div class="flex gap-28 items-center animate-infinite-scroll pr-28" aria-hidden="true">
-            <!-- Baker Hughes -->
-            <div class="flex items-center gap-2.5 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-sm font-black tracking-tighter uppercase">Baker Hughes</span>
-                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
-                    <path d="M4 4h4l8 8-8 8H4l8-8zM10 4h4l6 6-6 6h-4l6-6z"/>
-                </svg>
-            </div>
-            <!-- União Química -->
-            <div class="flex items-center gap-2.5 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-12S17.52 2 12 2zm1 15h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/>
-                </svg>
-                <div class="flex flex-col leading-none">
-                    <span class="text-xs font-black tracking-tight uppercase">União Química</span>
-                    <span class="text-[6px] tracking-widest uppercase font-bold text-slate-400">Hospitalar</span>
-                </div>
-            </div>
-            <!-- Sesc -->
-            <div class="flex items-center gap-2 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-lg font-black italic tracking-tighter text-slate-500 uppercase leading-none">Sesc</span>
-                <svg class="w-7.5 h-4 fill-current" viewBox="0 0 24 12" style="width: 30px; height: 16px;">
-                    <path d="M0 6c4-6 8-6 12 0s8 6 12 0v2c-4 6-8 6-12 0S4 2 0 8z"/>
-                </svg>
-            </div>
-            <!-- LABORSAN -->
-            <div class="flex items-center gap-2 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <div class="flex flex-col leading-none text-right">
-                    <span class="text-xs font-black tracking-tighter uppercase">LABORSAN</span>
-                    <span class="text-[6px] tracking-widest uppercase font-black text-slate-400">AGRO</span>
-                </div>
-                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-12S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                </svg>
-            </div>
-            <!-- Cebrace -->
-            <div class="flex items-center text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300 border border-slate-200 px-3.5 py-1.5 rounded bg-slate-50/50">
-                <span class="text-sm font-black tracking-tight lowercase">cebrace</span>
-                <svg class="w-4.5 h-4.5 ml-1.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                    <path d="M2 12h20"/>
-                </svg>
-            </div>
-            <!-- Nestlé -->
-            <div class="flex items-center gap-1.5 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-sm font-extrabold tracking-tight uppercase">Nestlé</span>
-                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
-                    <path d="M12 3c-1.2 0-2.4.4-3.4 1.1-.5-.3-1.1-.5-1.7-.5-1.9 0-3.4 1.5-3.4 3.4 0 1.2.6 2.2 1.5 2.8C4.4 10.8 4 12.1 4 13.5c0 3.6 2.9 6.5 6.5 6.5 2 0 3.8-1 4.9-2.5 1.1 1.5 2.9 2.5 4.9 2.5 3.6 0 6.5-2.9 6.5-6.5 0-1.4-.4-2.7-1.1-3.7.9-.6 1.5-1.6 1.5-2.8 0-1.9-1.5-3.4-3.4-3.4-.6 0-1.2.2-1.7.5C21.1 3.4 19.9 3 18.7 3c-2.3 0-4.3 1.3-5.3 3.2-1-1.9-3-3.2-5.3-3.2z"/>
-                </svg>
-            </div>
-            <!-- Stanley -->
-            <div class="flex items-center gap-1.5 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-sm font-black tracking-widest uppercase">STANLEY</span>
-                <svg class="w-4.5 h-4.5 fill-current" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                    <path d="M12 2L2 22h20L12 2zm0 4l6.5 13h-13L12 6z"/>
-                </svg>
-            </div>
-            <!-- Moleskine -->
-            <div class="flex items-center text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-xs font-black tracking-[0.25em] uppercase">MOLESKINE</span>
-            </div>
-            <!-- Tramontina -->
-            <div class="flex items-center gap-2 text-slate-400 hover:text-slate-800 hover:scale-105 transition-all duration-300">
-                <span class="text-xs font-black tracking-widest uppercase font-serif">TRAMONTINA</span>
-                <svg class="w-4.5 h-4.5 fill-current" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                </svg>
-            </div>
-        </div>
-    </div>
-</section>
+
 
 <!-- Segundo Banner Corporativo de Fechamento (Antes dos Depoimentos) -->
 <section class="w-full mb-16 select-none relative overflow-hidden bg-slate-950 min-h-[380px] flex items-center">
@@ -1009,56 +789,56 @@ $googleReviewsUrl = 'https://www.google.com/search?q=Novare+Brindes+Corporativos
 $depoimentos = [
     [
         'nome'  => 'Mariana Costa',
-        'empresa' => 'Gerente de RH • TechNova',
+        'empresa' => 'Gerente de RH',
         'tempo' => 'há 2 semanas',
         'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=96&h=96&q=80',
         'texto' => 'Montaram nosso kit de onboarding com identidade impecável e entregaram no prazo apertado da convenção. Os novos colaboradores amaram!',
     ],
     [
         'nome'  => 'Rafael Almeida',
-        'empresa' => 'Coordenador de Marketing • Grupo Vértice',
+        'empresa' => 'Coordenador de Marketing',
         'tempo' => 'há 1 mês',
         'avatar' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&h=96&q=80',
         'texto' => 'Atendimento ágil e consultivo: sugeriram alternativas econômicas dentro do orçamento mantendo alta durabilidade. Recomendo de olhos fechados.',
     ],
     [
         'nome'  => 'Juliana Ferreira',
-        'empresa' => 'Analista de Eventos • PharmaPlus',
+        'empresa' => 'Analista de Eventos',
         'tempo' => 'há 3 semanas',
         'avatar' => 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=96&h=96&q=80',
         'texto' => 'Catálogo amplo e atendimento altamente qualificado. Viramos clientes recorrentes para todos os nossos eventos corporativos.',
     ],
     [
         'nome'  => 'Bruno Carvalho',
-        'empresa' => 'Diretor Comercial • Laborsan',
+        'empresa' => 'Diretor Comercial',
         'tempo' => 'há 2 meses',
         'avatar' => 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=96&h=96&q=80',
         'texto' => 'Brindes de altíssima qualidade e a personalização ficou idêntica à nossa marca. A logística foi monitorada do início ao fim.',
     ],
     [
         'nome'  => 'Camila Rodrigues',
-        'empresa' => 'Gerente de Endomarketing • Sesc',
+        'empresa' => 'Gerente de Endomarketing',
         'tempo' => 'há 1 semana',
         'avatar' => 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=96&h=96&q=80',
         'texto' => 'Pedimos garrafas térmicas e canecas para a campanha interna e o resultado superou as expectativas. Equipe super atenciosa!',
     ],
     [
         'nome'  => 'Eduardo Martins',
-        'empresa' => 'Sócio • Cebrace',
+        'empresa' => 'Sócio',
         'tempo' => 'há 1 mês',
         'avatar' => 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=96&h=96&q=80',
         'texto' => 'Cotação rápida, prazos cumpridos e acabamento premium nos cadernos personalizados. Parceria que virou recorrente.',
     ],
     [
         'nome'  => 'Patrícia Lima',
-        'empresa' => 'Compras • União Química',
+        'empresa' => 'Compras',
         'tempo' => 'há 5 dias',
         'avatar' => 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=96&h=96&q=80',
         'texto' => 'Excelente custo-benefício para grandes volumes sem perder qualidade. O time consultivo entendeu exatamente o que precisávamos.',
     ],
     [
         'nome'  => 'Felipe Souza',
-        'empresa' => 'Gerente de Projetos • Baker Hughes',
+        'empresa' => 'Gerente de Projetos',
         'tempo' => 'há 3 meses',
         'avatar' => 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=96&h=96&q=80',
         'texto' => 'Mochilas executivas impecáveis para a nossa convenção anual. Profissionalismo do orçamento à entrega. Nota dez!',
@@ -1079,7 +859,7 @@ $depoimentos = [
             </span>
             <span class="text-sm font-bold text-slate-700"><strong class="font-black">4,9</strong> no Google</span>
             <span class="text-slate-300">•</span>
-            <span class="text-sm font-semibold text-slate-500">77 avaliações verificadas</span>
+            <span class="text-sm font-semibold text-slate-500">44 avaliações verificadas</span>
         </div>
     </div>
 

@@ -46,8 +46,8 @@ final class ProductMapper
     private const CATEGORIAS = [
         'Canecas e Copos'       => ['CANECA', 'COPO', 'XICARA'],
         'Garrafas e Squeezes'   => ['GARRAFA', 'SQUEEZE', 'COQUETELEIRA', 'GALAO'],
-        'Escrita'               => ['CANETA', 'LAPIS', 'LAPISEIRA', 'ROLLER'],
-        'Cadernos e Agendas'    => ['CADERNO', 'CADERNETA', 'BLOCO', 'PLANNER', 'AGENDA', 'CALENDARIO', 'SKETCHBOOK'],
+        'Canetas'               => ['CANETA', 'LAPIS', 'LAPISEIRA', 'ROLLER'],
+        'Moleskine & Cadernos'  => ['CADERNO', 'CADERNETA', 'BLOCO', 'PLANNER', 'AGENDA', 'CALENDARIO', 'SKETCHBOOK'],
         'Bolsas e Mochilas'     => ['BOLSA', 'MOCHILA', 'SACOLA', 'SACOCHILA', 'MALA', 'POCHETE', 'NECESSAIRE', 'FRASQUEIRA', 'ECOBAG'],
         'Tecnologia'            => ['FONE', 'MOUSE', 'POWER', 'PENDRIVE', 'CARREGADOR', 'SPEAKER', 'LANTERNA', 'HUB', 'WEBCAM', 'CABO', 'RELOGIO', 'SMARTWATCH', 'UMIDIFICADOR'],
         'Chaveiros e Acessorios'=> ['CHAVEIRO', 'PULSEIRA', 'ABRIDOR', 'LEQUE', 'ESPELHO', 'PORTA-JOIAS', 'PORTA-RETRATO'],
@@ -56,6 +56,8 @@ final class ProductMapper
         'Vestuario'             => ['BONE', 'CAMISETA', 'JALECO', 'AVENTAL', 'CHAPEU'],
         'Guarda-chuvas'         => ['GUARDA-CHUVA', 'SOMBRINHA'],
         'Kits e Conjuntos'      => ['KIT', 'CONJUNTO', 'JOGO'],
+        'Mouse Pads'            => ['MOUSE PAD', 'MOUSEPAD', 'DESKPAD', 'DESK PAD'],
+        'Carteiras'             => ['CARTEIRA', 'PORTA CARTAO', 'PORTA-CARTAO', 'PORTA CARTOES'],
     ];
 
     /** Material por palavra-chave (str_contains). Stems escolhidos p/ evitar falsos positivos. */
@@ -192,13 +194,15 @@ final class ProductMapper
 
         // Sinônimos por categoria
         $sinonimosCategorias = [
-            'ESCRITA' => ['CANETA', 'LAPIS', 'LAPISEIRA', 'ESFEROGRAFICA', 'PAPELARIA', 'ESCRITORIO', 'ROLLER', 'MARCADOR', 'GIZ', 'PENA', 'DESENHO', 'ANOTACOES'],
-            'CADERNOS E AGENDAS' => ['CADERNO', 'CADERNETA', 'BLOCO', 'PLANNER', 'AGENDA', 'CALENDARIO', 'SKETCHBOOK', 'MOLESKINE', 'PAPELARIA', 'NOTAS', 'DIARIO', 'REGISTRO', 'ESCRITORIO'],
+            'CANETAS' => ['CANETA', 'LAPIS', 'LAPISEIRA', 'ESFEROGRAFICA', 'PAPELARIA', 'ESCRITORIO', 'ROLLER', 'MARCADOR', 'GIZ', 'PENA', 'DESENHO', 'ANOTACOES'],
+            'MOLESKINE & CADERNOS' => ['CADERNO', 'CADERNETA', 'BLOCO', 'PLANNER', 'AGENDA', 'CALENDARIO', 'SKETCHBOOK', 'MOLESKINE', 'PAPELARIA', 'NOTAS', 'DIARIO', 'REGISTRO', 'ESCRITORIO'],
             'BOLSAS E MOCHILAS' => ['BOLSA', 'MOCHILA', 'SACOLA', 'SACOCHILA', 'MALA', 'POCHETE', 'NECESSAIRE', 'FRASQUEIRA', 'ECOBAG', 'VIAGEM', 'TRANSPORTE', 'ACADEMIA', 'BAG', 'MALETA'],
             'GARRAFAS E SQUEEZES' => ['GARRAFA', 'SQUEEZE', 'COQUETELEIRA', 'GALAO', 'ACADEMIA', 'ESPORTE', 'HIDRATACAO', 'TERMICA', 'COPO', 'CANECA', 'CANTIL', 'BEBIDA', 'AGUA'],
             'CANECAS E COPOS' => ['CANECA', 'COPO', 'XICARA', 'TUMBLER', 'STANLEY', 'BEBIDA', 'CAFE', 'TERMICOS', 'XICARA', 'PINT', 'CHAMPANHE', 'CERVEJA'],
             'TECNOLOGIA' => ['FONE', 'MOUSE', 'POWER', 'PENDRIVE', 'CARREGADOR', 'SPEAKER', 'LANTERNA', 'HUB', 'WEBCAM', 'CABO', 'RELOGIO', 'SMARTWATCH', 'UMIDIFICADOR', 'ELETRONICO', 'GIFT', 'DIAL', 'HEADSET'],
             'KITS E CONJUNTOS' => ['KIT', 'CONJUNTO', 'JOGO', 'ONBOARDING', 'BOAS VINDAS', 'CORPORATIVO', 'INTEGRACAO', 'PRESENTE', 'CAIXA', 'WELCOME', 'BOAS-VINDAS'],
+            'MOUSE PADS' => ['MOUSEPAD', 'MOUSE PAD', 'DESKPAD', 'DESK PAD', 'TECNOLOGIA', 'ESCRITORIO'],
+            'CARTEIRAS' => ['CARTEIRA', 'PORTA-CARTAO', 'PORTA CARTAO', 'PORTA CARTOES', 'COURO', 'ORGANIZADOR'],
         ];
 
         $catUpper = self::normalizar($categoria);

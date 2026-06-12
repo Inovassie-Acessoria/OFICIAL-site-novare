@@ -164,19 +164,75 @@ final class ProductRepository
             $where[] = '(p.quantidade_minima IS NULL OR p.quantidade_minima <= :qmin)';
             $params[':qmin'] = (int) $f['quantidade_minima'];
         }
-        if ($excluir !== 'cor' && !empty($f['cor'])) {
-            $where[] = 'EXISTS (SELECT 1 FROM variacoes v WHERE v.produto_id = p.id AND v.ativo = 1 AND v.cor = :cor)';
-            $params[':cor'] = (string) $f['cor'];
-        }
         if (!empty($f['q'])) {
             $buscaOriginal = trim((string) $f['q']);
+            
+            // Extração automática de cor e correção fonética de erros de digitação/plurais
+            $palavras = preg_split('/\s+/', $buscaOriginal) ?: [];
+            $novasPalavras = [];
+            $corDetectada = null;
+            
+            try {
+                $listaCoresDb = $this->pdo->query('SELECT nome FROM cores')->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            } catch (Throwable $e) {
+                $listaCoresDb = [];
+            }
+            
+            $errosComuns = [
+                'moxila' => 'mochila', 'moxilas' => 'mochila', 'mochilas' => 'mochila',
+                'squeze' => 'squeeze', 'squezes' => 'squeeze', 'squezee' => 'squeeze', 'squezees' => 'squeeze',
+                'esquize' => 'squeeze', 'esquizes' => 'squeeze',
+                'canete' => 'caneta', 'canetes' => 'caneta', 'canetas' => 'caneta',
+                'carteiras' => 'carteira', 'cartira' => 'carteira', 'cartiras' => 'carteira',
+                'moleskini' => 'moleskine', 'moleskines' => 'moleskine', 'moleskine' => 'moleskine',
+                'cadernos' => 'caderno', 'caderneta' => 'caderno', 'cadernetas' => 'caderno',
+                'copos' => 'copo', 'canecas' => 'caneca', 'chaveiros' => 'chaveiro',
+                'mousepad' => 'mouse pad', 'mousepads' => 'mouse pad',
+            ];
+            
+            foreach ($palavras as $palavra) {
+                $palavraSemAcento = ProductMapper::normalizar($palavra);
+                $palavraLower = mb_strtolower($palavra, 'UTF-8');
+                
+                $ehCor = false;
+                foreach ($listaCoresDb as $cDb) {
+                    if (ProductMapper::normalizar($cDb) === $palavraSemAcento) {
+                        $corDetectada = $cDb;
+                        $ehCor = true;
+                        break;
+                    }
+                }
+                
+                if ($ehCor) {
+                    continue;
+                }
+                
+                if (isset($errosComuns[$palavraLower])) {
+                    $novasPalavras[] = $errosComuns[$palavraLower];
+                } else {
+                    $novasPalavras[] = $palavra;
+                }
+            }
+            
+            if ($corDetectada !== null && empty($f['cor'])) {
+                $f['cor'] = $corDetectada;
+            }
+            
+            $buscaOriginal = implode(' ', $novasPalavras);
             $b = $this->prepararBusca($buscaOriginal);
             if ($b !== '') {
-                $where[] = '(p.sku_pai = :sku_exato OR EXISTS (SELECT 1 FROM variacoes v2 WHERE v2.produto_id = p.id AND v2.sku_completo = :sku_exato) OR MATCH(p.nome, p.descricao, p.tags) AGAINST (:q IN BOOLEAN MODE))';
-                $params[':sku_exato'] = $buscaOriginal;
+                // Marcadores exclusivos (:sku_exato1 e :sku_exato2) para corrigir o erro 500 no PDO real
+                $where[] = '(p.sku_pai = :sku_exato1 OR EXISTS (SELECT 1 FROM variacoes v2 WHERE v2.produto_id = p.id AND v2.sku_completo = :sku_exato2) OR MATCH(p.nome, p.descricao, p.tags) AGAINST (:q IN BOOLEAN MODE))';
+                $params[':sku_exato1'] = $buscaOriginal;
+                $params[':sku_exato2'] = $buscaOriginal;
                 $params[':q'] = $b;
                 $boolean = $b;
             }
+        }
+
+        if ($excluir !== 'cor' && !empty($f['cor'])) {
+            $where[] = 'EXISTS (SELECT 1 FROM variacoes v WHERE v.produto_id = p.id AND v.ativo = 1 AND v.cor = :cor)';
+            $params[':cor'] = (string) $f['cor'];
         }
 
         return [$where, $params, $boolean];
@@ -326,10 +382,57 @@ final class ProductRepository
         });
     }
 
-    /** Produtos para destaque na home (mais recentes). */
+    /** Produtos para destaque na home (seleção premium randomizada semanalmente ou mais recentes). */
     public function destaques(int $limite = 8): array
     {
         $limite = max(1, min(24, $limite));
+        
+        // Automação Híbrida: Randomização toda segunda-feira após às 05:00
+        $ultimoSorteio = (int) Settings::get('selecao_premium_timestamp', 0);
+        $segundaPassada05h = strtotime('last Monday 05:00');
+        if ($segundaPassada05h === false) {
+            $segundaPassada05h = 0;
+        }
+        $agora = time();
+        if ($agora >= $segundaPassada05h && $ultimoSorteio < $segundaPassada05h) {
+            try {
+                // Linha de corte: 25% produtos ativos mais caros do catálogo
+                $sqlPreco = "SELECT preco_base FROM produtos 
+                             WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND preco_base > 0 
+                             ORDER BY preco_base DESC";
+                $precos = $this->pdo->query($sqlPreco)->fetchAll(PDO::FETCH_COLUMN);
+                $totalProdutos = count($precos);
+                
+                if ($totalProdutos > 0) {
+                    $corteIndice = (int) ceil($totalProdutos * 0.25);
+                    $precoCorte = (float) ($precos[$corteIndice - 1] ?? 0);
+                    
+                    $sqlSkus = "SELECT sku_pai FROM produtos 
+                                WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND preco_base >= :corte";
+                    $stmtS = $this->pdo->prepare($sqlSkus);
+                    $stmtS->execute([':corte' => $precoCorte]);
+                    $skusQualificados = $stmtS->fetchAll(PDO::FETCH_COLUMN);
+                    
+                    if (count($skusQualificados) > 0) {
+                        shuffle($skusQualificados);
+                        $skusSorteados = array_slice($skusQualificados, 0, $limite);
+                        
+                        Settings::set('selecao_premium_skus', $skusSorteados);
+                        Settings::set('selecao_premium_timestamp', $agora);
+                        
+                        Cache::flush();
+                    }
+                }
+            } catch (Throwable $e) {
+                error_log('[Premium Randomizer] Erro: ' . $e->getMessage());
+            }
+        }
+        
+        $skusSalvos = Settings::get('selecao_premium_skus', []);
+        if (is_array($skusSalvos) && count($skusSalvos) > 0) {
+            return $this->porSkus($skusSalvos);
+        }
+        
         return Cache::remember("dest:{$limite}", self::TTL, function () use ($limite) {
             $sql = "SELECT id, sku_pai, nome, categoria, preco_base, sustentavel, imagem_principal
                     FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''

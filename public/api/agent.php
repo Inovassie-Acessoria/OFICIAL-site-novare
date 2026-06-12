@@ -164,7 +164,7 @@ foreach ($res['itens'] as $p) {
         'preco'    => preco($p['preco_base'] ?? 0),
         'imagem'   => $p['imagem_principal'] ?? '',
         'url'      => $urlProd,
-        'whatsapp' => whatsappLink(whatsappProduto($p['nome'], $p['imagem_principal'] ?? '')),
+        'whatsapp' => whatsappLink(whatsappProduto($p['nome'], $p['sku_pai'])),
     ];
 }
 

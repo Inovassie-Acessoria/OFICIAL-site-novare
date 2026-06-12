@@ -55,14 +55,10 @@ function whatsappLink(string $mensagem): string
     return 'https://wa.me/' . whatsappNumero() . '?text=' . rawurlencode($mensagem);
 }
 
-/** Mensagem padrão de orçamento de um produto (nome + imagem). */
-function whatsappProduto(string $nome, string $imagem = ''): string
+/** Mensagem padrão de orçamento de um produto (nome + SKU). */
+function whatsappProduto(string $nome, string $sku): string
 {
-    $msg = "Olá, tudo bem? Gostaria de fazer um orçamento de {$nome}";
-    if ($imagem !== '') {
-        $msg .= " ({$imagem})";
-    }
-    return $msg . ', poderia me ajudar?';
+    return "Olá! Eu vim através do site e me interessei no produto {$nome} (SKU: {$sku}) e gostaria de um orçamento";
 }
 
 /** Renderiza uma view dentro do layout padrão. */
