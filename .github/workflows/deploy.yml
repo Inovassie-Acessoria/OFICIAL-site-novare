@@ -26,6 +26,10 @@ jobs:
           # Pasta do projeto no servidor (ajuste conforme a Hostinger).
           server-dir: ./domains/novarebrindes.com.br/
           # Nunca enviar segredos, storage local, git, CI e ferramentas de dev.
+          # IMPORTANTE: public/assets/uploads e storage/ia guardam conteúdo enviado
+          # pelo painel admin (logo, banners, imagens de categoria, base da IA).
+          # Eles NÃO estão no Git; sem excluí-los aqui, o FTP-Deploy apaga esses
+          # arquivos do servidor a cada deploy (era o que sumia com o logo/banners).
           exclude: |
             **/.git*
             **/.git*/**
@@ -34,8 +38,10 @@ jobs:
             .env.*
             storage/cache/**
             storage/logs/**
+            storage/ia/**
             storage/*.json
             storage/*.txt
+            public/assets/uploads/**
             tools/**
             node_modules/**
             start.bat

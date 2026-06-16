@@ -118,7 +118,7 @@ $logoUrl = SiteContent::logo();
             <!-- Brand & Search Row -->
             <div class="flex items-center justify-between w-full md:w-auto gap-8">
                 <a href="<?= url('/') ?>" class="flex items-center">
-                    <img alt="Novare Brindes" class="h-10 w-auto object-contain" src="<?= e($logoUrl) ?>" onerror="this.onerror=null;this.src='<?= e(SiteContent::LOGO_FALLBACK_REMOTO) ?>'" />
+                    <img alt="Novare Brindes" class="h-10 w-auto object-contain" src="<?= e($logoUrl) ?>" onerror="this.onerror=null;this.src='<?= e(SiteContent::LOGO_PADRAO) ?>'" />
                 </a>
             </div>
 
@@ -212,7 +212,7 @@ $logoUrl = SiteContent::logo();
                 <!-- Brand Column -->
                 <div class="col-span-1">
                     <a href="<?= url('/') ?>" class="inline-block mb-4">
-                        <img alt="Novare Brindes" class="h-10 w-auto object-contain brightness-0 invert" src="<?= e($logoUrl) ?>" onerror="this.onerror=null;this.src='<?= e(SiteContent::LOGO_FALLBACK_REMOTO) ?>'" />
+                        <img alt="Novare Brindes" class="h-10 w-auto object-contain brightness-0 invert" src="<?= e($logoUrl) ?>" onerror="this.onerror=null;this.src='<?= e(SiteContent::LOGO_PADRAO) ?>'" />
                     </a>
                     <p class="text-slate-400 text-xs leading-relaxed mb-6">
                         Seleção sob medida. Elevando o valor e a percepção da sua marca através de brindes personalizados e presentes corporativos desenvolvidos com excelência técnica para sua empresa, do popular ao executivo.

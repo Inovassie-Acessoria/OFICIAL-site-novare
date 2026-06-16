@@ -14,21 +14,26 @@ require_once __DIR__ . '/Settings.php';
  */
 final class SiteContent
 {
-    // Logo transparente (PNG RGBA) empacotado no próprio site — sem depender de
-    // host externo, que podia falhar e deixar o cabeçalho/rodapé sem o logo.
+    // Logo transparente (PNG RGBA) empacotado no próprio site (versionado no Git,
+    // sempre presente após o deploy). É o padrão e também o destino do onerror do
+    // <img> — se o logo configurado falhar, cai aqui em vez de num host externo.
     public const LOGO_PADRAO = '/assets/images/logo-novare.png';
-
-    // Fallback do onerror do <img>: se o logo configurado/empacotado falhar ao
-    // carregar (arquivo ausente após deploy, upload apagado, cache limpo), o
-    // navegador troca por esta URL e o logo NUNCA aparece quebrado. O CSP libera
-    // imagens https:.
-    public const LOGO_FALLBACK_REMOTO = 'https://novaregrafica.com.br/wp-content/uploads/2025/11/logotipo-site.png';
 
     /** Logo do cabeçalho/rodapé. */
     public static function logo(): string
     {
         $v = Settings::get('logo', null);
-        return is_string($v) && trim($v) !== '' ? $v : self::LOGO_PADRAO;
+        if (is_string($v) && trim($v) !== '') {
+            $v = trim($v);
+            // Logo enviado pelo painel é um caminho local sob /assets/. Se o arquivo
+            // não existir mais (ex.: removido em um deploy), usa o empacotado em vez
+            // de quebrar e cair no fallback — é o que causava o "logo sumindo".
+            if (str_starts_with($v, '/assets/') && !is_file(APP_ROOT . '/public' . $v)) {
+                return self::LOGO_PADRAO;
+            }
+            return $v;
+        }
+        return self::LOGO_PADRAO;
     }
 
     /** As 7 categorias da seção "Navegue pelas categorias" (rótulos fixos). */
