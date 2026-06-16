@@ -113,12 +113,13 @@ final class GeminiService
             $headers[] = 'Authorization: Bearer ' . $this->apiKey;
         }
 
-        // O gemini-2.5-flash devolve 503/429 transitórios sob carga. Uma única
-        // retentativa rápida reduz bastante o cair no fallback "burro".
+        // O gemini-2.5-flash devolve 503/429 transitórios sob carga. Algumas
+        // retentativas rápidas reduzem bastante o cair no fallback "burro"
+        // (não-adaptativo). Custo extra só é pago quando há falha transitória.
         $body = null;
         $errno = 0;
         $httpCode = 0;
-        $tentativasMax = 2;
+        $tentativasMax = 3;
         for ($tentativa = 1; $tentativa <= $tentativasMax; $tentativa++) {
             $ch = curl_init($url);
             curl_setopt_array($ch, [

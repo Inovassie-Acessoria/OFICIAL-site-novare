@@ -18,6 +18,12 @@ final class SiteContent
     // host externo, que podia falhar e deixar o cabeçalho/rodapé sem o logo.
     public const LOGO_PADRAO = '/assets/images/logo-novare.png';
 
+    // Fallback do onerror do <img>: se o logo configurado/empacotado falhar ao
+    // carregar (arquivo ausente após deploy, upload apagado, cache limpo), o
+    // navegador troca por esta URL e o logo NUNCA aparece quebrado. O CSP libera
+    // imagens https:.
+    public const LOGO_FALLBACK_REMOTO = 'https://novaregrafica.com.br/wp-content/uploads/2025/11/logotipo-site.png';
+
     /** Logo do cabeçalho/rodapé. */
     public static function logo(): string
     {

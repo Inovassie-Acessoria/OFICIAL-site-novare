@@ -24,6 +24,25 @@ function responder(array $dados, int $http = 200): never
     exit;
 }
 
+/** Detecta cumprimentos/conversa básica para não responder com produtos no fallback. */
+function ehConversaSimples(string $txt): bool
+{
+    $t = mb_strtolower(trim($txt), 'UTF-8');
+    $t = trim((string) preg_replace('/[!?.,;:]+/u', '', $t));
+    $saudacoes = ['oi', 'ola', 'olá', 'oie', 'eai', 'e ai', 'e aí', 'opa', 'hey', 'hello',
+        'bom dia', 'boa tarde', 'boa noite', 'tudo bem', 'tudo bom', 'td bem', 'blz', 'beleza',
+        'obrigado', 'obrigada', 'valeu', 'vlw', 'tchau', 'ok', 'okay', 'como vai', 'tudo certo'];
+    if (in_array($t, $saudacoes, true)) {
+        return true;
+    }
+    foreach (['tudo bem', 'tudo bom', 'bom dia', 'boa tarde', 'boa noite'] as $frag) {
+        if (str_contains($t, $frag) && mb_strlen($t) <= 25) {
+            return true;
+        }
+    }
+    return false;
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     responder(['erro' => 'Método não permitido'], 405);
 }
@@ -123,7 +142,15 @@ $gemini = GeminiService::fromEnv();
 $decisao = $gemini->gerarJson($instrucao, $mensagens, $imagem);
 
 if (!is_array($decisao)) {
-    // Fallback: sem IA disponível, busca direta pelo texto do usuário.
+    // Sem IA disponível (ex.: 503 transitório do Gemini). Para NÃO responder um
+    // simples cumprimento com produtos aleatórios, trata conversa básica aqui;
+    // só então busca pelo texto como melhor esforço.
+    if (ehConversaSimples($ultimaDoUsuario)) {
+        responder([
+            'resposta' => 'Oi! Tudo bem? 😊 Sou a Sophia, consultora de brindes da Novare. Me conta o que você procura (caneta, garrafa, mochila, kit de onboarding...) que eu já te mostro boas opções!',
+            'produtos' => [],
+        ]);
+    }
     $decisao = [
         'acao'     => 'buscar',
         'resposta' => 'Veja algumas opções que encontrei:',
