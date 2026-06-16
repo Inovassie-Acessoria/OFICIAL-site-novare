@@ -102,15 +102,14 @@ $instrucao .= <<<'TXT'
 
 Responda SEMPRE e SOMENTE com um JSON puro neste formato:
 {
-  "acao": "perguntar" | "buscar",
-  "mensagem": "texto curto e cordial em pt-BR",
+  "resposta": "texto que o cliente vê — SEMPRE preenchido, tom humano e caloroso",
+  "acao": "conversar" | "buscar",
+  "q": "termo central do produto — só quando acao = buscar; senão vazio",
   "filtros": {
-    "q": "palavras-chave do produto central pedido pelo cliente",
-    "categoria": "uma das categorias válidas ou string vazia",
     "cor": "uma das cores válidas ou vazia",
     "material": "um dos materiais válidos ou vazio",
-    "preco_max": número ou null,
-    "sustentavel": 0 ou 1
+    "categoria": "uma das categorias válidas ou vazia",
+    "referencia": "referência de produto ou vazia"
   }
 }
 TXT;
@@ -125,28 +124,59 @@ $decisao = $gemini->gerarJson($instrucao, $mensagens, $imagem);
 
 if (!is_array($decisao)) {
     // Fallback: sem IA disponível, busca direta pelo texto do usuário.
-    $decisao = ['acao' => 'buscar', 'mensagem' => 'Veja algumas opções que encontrei:', 'filtros' => ['q' => $ultimaDoUsuario]];
+    $decisao = [
+        'acao'     => 'buscar',
+        'resposta' => 'Veja algumas opções que encontrei:',
+        'q'        => $ultimaDoUsuario,
+        'filtros'  => [],
+    ];
 }
 
-$acao     = ($decisao['acao'] ?? 'buscar') === 'perguntar' ? 'perguntar' : 'buscar';
-$mensagem = trim((string) ($decisao['mensagem'] ?? ''));
+// Aceita tanto a nova ação 'conversar' quanto a antiga 'perguntar'
+$acaoDecisao = $decisao['acao'] ?? 'buscar';
+$acao = ($acaoDecisao === 'conversar' || $acaoDecisao === 'perguntar') ? 'conversar' : 'buscar';
+
+// Aceita tanto a nova chave 'resposta' quanto a antiga 'mensagem'
+$mensagem = trim((string) ($decisao['resposta'] ?? $decisao['mensagem'] ?? ''));
 if ($mensagem === '') {
-    $mensagem = $acao === 'perguntar' ? 'Pode me contar um pouco mais?' : 'Encontrei estas opções:';
+    $mensagem = $acao === 'conversar' ? 'Pode me contar um pouco mais?' : 'Encontrei estas opções:';
 }
 
-if ($acao === 'perguntar') {
+if ($acao === 'conversar') {
     responder(['resposta' => $mensagem, 'produtos' => []]);
 }
 
 /* ---------- Sanitiza filtros contra listas válidas ---------- */
+$qDecisao = $decisao['q'] ?? $decisao['filtros']['q'] ?? '';
 $f = is_array($decisao['filtros'] ?? null) ? $decisao['filtros'] : [];
+
 $filtros = [];
-if (!empty($f['q']))         $filtros['q'] = mb_substr(trim((string) $f['q']), 0, 120);
-if (!empty($f['categoria']) && in_array($f['categoria'], $catsValidas, true)) $filtros['categoria'] = $f['categoria'];
-if (!empty($f['cor']) && in_array($f['cor'], $coresValidas, true))           $filtros['cor'] = $f['cor'];
-if (!empty($f['material']) && in_array($f['material'], $matsValidos, true))   $filtros['material'] = $f['material'];
-if (isset($f['preco_max']) && is_numeric($f['preco_max']) && $f['preco_max'] > 0) $filtros['preco_max'] = (float) $f['preco_max'];
-if (!empty($f['sustentavel'])) $filtros['sustentavel'] = 1;
+if ($qDecisao !== '') {
+    $filtros['q'] = mb_substr(trim((string) $qDecisao), 0, 120);
+}
+
+// Se o modelo enviou uma referência (ex.: SKU ou termo), junta ao termo de busca 'q' para precisão
+if (!empty($f['referencia'])) {
+    $ref = mb_substr(trim((string) $f['referencia']), 0, 80);
+    $filtros['q'] = empty($filtros['q']) ? $ref : $filtros['q'] . ' ' . $ref;
+}
+
+if (!empty($f['categoria']) && in_array($f['categoria'], $catsValidas, true)) {
+    $filtros['categoria'] = $f['categoria'];
+}
+if (!empty($f['cor']) && in_array($f['cor'], $coresValidas, true)) {
+    $filtros['cor'] = $f['cor'];
+}
+if (!empty($f['material']) && in_array($f['material'], $matsValidos, true)) {
+    $filtros['material'] = $f['material'];
+}
+// Retrocompatibilidade opcional com filtros antigos (se passados pela IA)
+if (isset($f['preco_max']) && is_numeric($f['preco_max']) && $f['preco_max'] > 0) {
+    $filtros['preco_max'] = (float) $f['preco_max'];
+}
+if (!empty($f['sustentavel'])) {
+    $filtros['sustentavel'] = 1;
+}
 
 if (!$filtros) {
     $filtros['q'] = mb_substr($ultimaDoUsuario, 0, 120);
