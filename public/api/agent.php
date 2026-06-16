@@ -62,6 +62,11 @@ if ($ultimaDoUsuario === '') {
     responder(['resposta' => 'Conte um pouco da sua necessidade para eu sugerir brindes. 😊', 'produtos' => []]);
 }
 
+// Guarda de nível superior: qualquer falha (banco, Gemini, etc.) vira uma
+// resposta JSON amigável — nunca um 500 sem corpo, que no front aparecia como
+// "Tivemos um problema de conexão".
+try {
+
 $repo = ProductRepository::create();
 $catsValidas  = array_column($repo->categorias(), 'categoria');
 $matsValidos  = array_column($repo->materiais(), 'material');
@@ -173,3 +178,11 @@ if (!$produtos) {
 }
 
 responder(['resposta' => $mensagem, 'produtos' => $produtos]);
+
+} catch (Throwable $e) {
+    error_log('[agent] ' . $e->getMessage());
+    responder([
+        'resposta' => 'Tive uma instabilidade momentânea por aqui. 😅 Tente novamente em instantes ou fale agora com um consultor pelo WhatsApp que te ajudamos na hora.',
+        'produtos' => [],
+    ]);
+}

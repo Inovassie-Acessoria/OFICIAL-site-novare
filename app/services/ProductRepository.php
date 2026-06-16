@@ -27,6 +27,10 @@ final class ProductRepository
         'nome'       => 'p.nome ASC',
     ];
 
+    /** Expressão MATCH(...) compatível com o índice FULLTEXT REAL (memoizada por requisição). */
+    private ?string $ftMatchExpr = null;
+    private bool $ftResolved = false;
+
     public function __construct(private readonly PDO $pdo)
     {
     }
@@ -56,8 +60,9 @@ final class ProductRepository
         $matchSelect = '';
         $dataParams  = $whereParams;
         $orderBy     = self::ORDENACOES[$ordenarChave] ?? self::ORDENACOES['relevancia'];
-        if ($boolean !== '') {
-            $matchSelect = ', MATCH(p.nome, p.descricao, p.tags) AGAINST (:qscore IN BOOLEAN MODE) AS score';
+        $ftExpr      = $this->matchExpr();
+        if ($boolean !== '' && $ftExpr !== null) {
+            $matchSelect = ', ' . $ftExpr . ' AGAINST (:qscore IN BOOLEAN MODE) AS score';
             $dataParams[':qscore'] = $boolean;
             if ($ordenarChave === 'relevancia') {
                 $orderBy = 'score DESC';
@@ -221,12 +226,28 @@ final class ProductRepository
             $buscaOriginal = implode(' ', $novasPalavras);
             $b = $this->prepararBusca($buscaOriginal);
             if ($b !== '') {
-                // Marcadores exclusivos (:sku_exato1 e :sku_exato2) para corrigir o erro 500 no PDO real
-                $where[] = '(p.sku_pai = :sku_exato1 OR EXISTS (SELECT 1 FROM variacoes v2 WHERE v2.produto_id = p.id AND v2.sku_completo = :sku_exato2) OR MATCH(p.nome, p.descricao, p.tags) AGAINST (:q IN BOOLEAN MODE))';
+                // Match por SKU exato (pai ou variação) + texto. Marcadores exclusivos
+                // (:sku_exato1/2) porque o PDO real (EMULATE_PREPARES=false) não reaproveita placeholders.
+                $skuClause = 'p.sku_pai = :sku_exato1 OR EXISTS (SELECT 1 FROM variacoes v2 WHERE v2.produto_id = p.id AND v2.sku_completo = :sku_exato2)';
                 $params[':sku_exato1'] = $buscaOriginal;
                 $params[':sku_exato2'] = $buscaOriginal;
-                $params[':q'] = $b;
-                $boolean = $b;
+
+                // O texto usa o índice FULLTEXT REAL da tabela (adaptativo). Se o índice
+                // tiver colunas diferentes das esperadas — ou não existir — o MySQL lança
+                // o erro 1191 e a busca caía em 500. Detectamos o índice e, na ausência
+                // dele, fazemos fallback por LIKE.
+                $ftExpr = $this->matchExpr();
+                if ($ftExpr !== null) {
+                    $where[] = "({$skuClause} OR {$ftExpr} AGAINST (:q IN BOOLEAN MODE))";
+                    $params[':q'] = $b;
+                    $boolean = $b;
+                } else {
+                    $like = '%' . $buscaOriginal . '%';
+                    $where[] = "({$skuClause} OR p.nome LIKE :like_q1 OR p.descricao LIKE :like_q2 OR p.tags LIKE :like_q3)";
+                    $params[':like_q1'] = $like;
+                    $params[':like_q2'] = $like;
+                    $params[':like_q3'] = $like;
+                }
             }
         }
 
@@ -257,6 +278,54 @@ final class ProductRepository
             }
         }
         return implode(' ', $partes);
+    }
+
+    /**
+     * Expressão MATCH(...) alinhada ao índice FULLTEXT que REALMENTE existe na
+     * tabela `produtos`. O MySQL exige que as colunas do MATCH batam exatamente
+     * com um índice FULLTEXT existente, senão lança o erro 1191. Como o índice
+     * em produção pode divergir do schema atual (ex.: criado antes de `tags`
+     * entrar no índice), descobrimos as colunas em runtime e montamos o MATCH
+     * compatível. Retorna null se não houver nenhum índice FULLTEXT (aí a busca
+     * usa LIKE). Memoizado por instância (1 SHOW INDEX por requisição).
+     */
+    private function matchExpr(): ?string
+    {
+        if ($this->ftResolved) {
+            return $this->ftMatchExpr;
+        }
+        $this->ftResolved = true;
+
+        try {
+            $rows = $this->pdo->query('SHOW INDEX FROM produtos')->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            return $this->ftMatchExpr = null;
+        }
+
+        // Agrupa colunas por índice FULLTEXT, na ordem do índice.
+        $porIndice = [];
+        foreach ($rows as $r) {
+            if (strtoupper((string) ($r['Index_type'] ?? '')) !== 'FULLTEXT') {
+                continue;
+            }
+            $porIndice[(string) $r['Key_name']][(int) $r['Seq_in_index']] = (string) $r['Column_name'];
+        }
+
+        // Prefere o índice que cobre MAIS colunas (melhor recall).
+        $melhor = [];
+        foreach ($porIndice as $colunas) {
+            ksort($colunas);
+            if (count($colunas) > count($melhor)) {
+                $melhor = array_values($colunas);
+            }
+        }
+        if (!$melhor) {
+            return $this->ftMatchExpr = null;
+        }
+
+        // Colunas vêm do dicionário do banco (não da entrada do usuário) → seguras.
+        $qualificadas = array_map(static fn (string $c): string => 'p.' . $c, $melhor);
+        return $this->ftMatchExpr = 'MATCH(' . implode(', ', $qualificadas) . ')';
     }
 
     /**

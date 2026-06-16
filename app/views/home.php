@@ -207,7 +207,7 @@ if ($categorias) {
                                         <?= e($bCtaTxt) ?>
                                     </a>
                                 <?php endif; ?>
-                                <a href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all inline-block">
+                                <a href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all inline-block">
                                     Falar com Equipe
                                 </a>
                             </div>
@@ -771,7 +771,7 @@ if ($categorias) {
                     Personalização refinada sob medida para datas comemorativas, convenções, feiras corporativas e campanhas de endomarketing. Atendemos soluções econômicas de grande volume e brindes executivos com o mesmo rigor.
                 </p>
                 <div class="flex flex-wrap gap-4">
-                    <a href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
+                    <a href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-8 py-3.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg inline-block">
                         Fazer Briefing no WhatsApp
                     </a>
                 </div>

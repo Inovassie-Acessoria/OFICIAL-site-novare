@@ -185,6 +185,24 @@ if ($action === 'migrate') {
     } catch (Throwable $e) {
         $error = "Erro ao sincronizar XBZ: " . $e->getMessage();
     }
+} elseif ($action === 'reindex') {
+    // Recria o índice FULLTEXT de busca incluindo a coluna `tags`. NÃO apaga
+    // dados — é só um ALTER no índice. Resolve a busca quando o banco foi criado
+    // com um índice antigo (ex.: só nome+descricao) diferente do código atual.
+    try {
+        $pdo = Database::connection();
+        if (!$pdo->query("SHOW TABLES LIKE 'produtos'")->fetch()) {
+            throw new Exception("Tabela 'produtos' não existe. Execute a Migração (passo 1) primeiro.");
+        }
+        if ($pdo->query("SHOW INDEX FROM produtos WHERE Key_name = 'ft_busca'")->fetch()) {
+            $pdo->exec("ALTER TABLE produtos DROP INDEX ft_busca");
+        }
+        $pdo->exec("ALTER TABLE produtos ADD FULLTEXT ft_busca (nome, descricao, tags)");
+        Cache::flush();
+        $message = "Índice de busca recriado com sucesso (nome, descricao, tags). A busca agora considera também as tags inteligentes.";
+    } catch (Throwable $e) {
+        $error = "Erro ao recriar índice de busca: " . $e->getMessage();
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -322,6 +340,7 @@ if ($action === 'migrate') {
            2. Importar Catálogo REAL da XBZ
         </a>
         <a href="?action=seed" class="btn btn-outline">Alternativa: popular com 6 itens de teste</a>
+        <a href="?action=reindex" class="btn btn-outline">Reparar índice de busca (incluir tags) — sem apagar dados</a>
         <a href="/" class="btn btn-outline">Ir para o Site Inicial</a>
 
         <div class="footer">

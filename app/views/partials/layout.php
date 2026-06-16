@@ -134,7 +134,7 @@ $logoUrl = SiteContent::logo();
 
             <!-- Actions Row -->
             <div class="flex items-center gap-6">
-                <a href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap hidden xl:block shadow-sm hover:opacity-90 transition-opacity">
+                <a href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap hidden xl:block shadow-sm hover:opacity-90 transition-opacity">
                     Fale com o Nosso Time &gt;
                 </a>
                 <div class="flex items-center gap-5 text-secondary">
@@ -237,14 +237,14 @@ $logoUrl = SiteContent::logo();
                     <ul class="space-y-3">
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/sobre') ?>">Nossa História</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="https://rastreamento.correios.com.br/app/index.php" target="_blank" rel="noopener">Rastrear Entrega</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">Fale com o Nosso Time</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">Fale com o Nosso Time</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo') ?>">Ver Todos os Produtos</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-xs uppercase tracking-widest font-bold mb-6 text-white border-l-2 border-primary pl-3">Contato & Briefing</h4>
                     <ul class="space-y-3">
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider font-semibold" href="<?= e(whatsappLink('Olá! Vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">WhatsApp Comercial</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider font-semibold" href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">WhatsApp Comercial</a></li>
                         <li class="text-slate-500 text-[10px] mt-2 uppercase tracking-wide leading-relaxed">Atendimento rápido<br>Segunda a Sexta-Feira<br>Horário Comercial</li>
                     </ul>
                 </div>

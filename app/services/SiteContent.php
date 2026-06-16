@@ -14,7 +14,9 @@ require_once __DIR__ . '/Settings.php';
  */
 final class SiteContent
 {
-    public const LOGO_PADRAO = 'https://novaregrafica.com.br/wp-content/uploads/2025/11/logotipo-site.png';
+    // Logo transparente (PNG RGBA) empacotado no próprio site — sem depender de
+    // host externo, que podia falhar e deixar o cabeçalho/rodapé sem o logo.
+    public const LOGO_PADRAO = '/assets/images/logo-novare.png';
 
     /** Logo do cabeçalho/rodapé. */
     public static function logo(): string

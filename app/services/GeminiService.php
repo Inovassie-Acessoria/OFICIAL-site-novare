@@ -113,24 +113,39 @@ final class GeminiService
             $headers[] = 'Authorization: Bearer ' . $this->apiKey;
         }
 
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_HTTPHEADER     => $headers,
-            CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
-            CURLOPT_TIMEOUT        => $timeout,
-            CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_SSL_VERIFYPEER => true,
-        ]);
-        $body     = curl_exec($ch);
-        $errno    = curl_errno($ch);
-        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        // O gemini-2.5-flash devolve 503/429 transitórios sob carga. Uma única
+        // retentativa rápida reduz bastante o cair no fallback "burro".
+        $body = null;
+        $errno = 0;
+        $httpCode = 0;
+        $tentativasMax = 2;
+        for ($tentativa = 1; $tentativa <= $tentativasMax; $tentativa++) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST           => true,
+                CURLOPT_HTTPHEADER     => $headers,
+                CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                CURLOPT_TIMEOUT        => $timeout,
+                CURLOPT_CONNECTTIMEOUT => 15,
+                CURLOPT_SSL_VERIFYPEER => true,
+            ]);
+            $body     = curl_exec($ch);
+            $errno    = curl_errno($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
 
-        if ($errno !== 0 || $httpCode !== 200 || !is_string($body)) {
-            error_log("[Gemini] HTTP {$httpCode} errno {$errno}");
-            return null;
+            if ($errno === 0 && $httpCode === 200 && is_string($body)) {
+                break;
+            }
+
+            // Só repete em erros transitórios de servidor (que voltam rápido).
+            $transitorio = in_array($httpCode, [429, 500, 502, 503, 504], true);
+            if (!$transitorio || $tentativa === $tentativasMax) {
+                error_log("[Gemini] HTTP {$httpCode} errno {$errno} (tentativa {$tentativa})");
+                return null;
+            }
+            usleep(700000); // 0,7s antes de tentar de novo
         }
 
         $data = json_decode($body, true);

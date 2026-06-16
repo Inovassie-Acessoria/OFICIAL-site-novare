@@ -58,7 +58,7 @@ function whatsappLink(string $mensagem): string
 /** Mensagem padrão de orçamento de um produto (nome + SKU). */
 function whatsappProduto(string $nome, string $sku): string
 {
-    return "Olá! Eu vim através do site e me interessei no produto {$nome} (SKU: {$sku}) e gostaria de um orçamento";
+    return "Olá, tudo bem? Eu vim através do site e gostei do produto {$nome} (SKU: {$sku}), poderia fazer um orçamento?";
 }
 
 /** Renderiza uma view dentro do layout padrão. */
