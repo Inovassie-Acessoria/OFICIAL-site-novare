@@ -224,10 +224,10 @@ $logoUrl = SiteContent::logo();
                     <h4 class="text-xs uppercase tracking-widest font-bold mb-6 text-white border-l-2 border-primary pl-3">Principais Categorias</h4>
                     <ul class="space-y-3">
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('BOLSAS E MOCHILAS')) ?>">Mochilas e Bolsas</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('CANETAS')) ?>">Canetas</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('ESCRITA')) ?>">Canetas</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('GARRAFAS E SQUEEZES')) ?>">Garrafas e Squeezes</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('KITS E CONJUNTOS')) ?>">Kits de Onboarding</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('MOLESKINE & CADERNOS')) ?>">Moleskine & Cadernos</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('CADERNOS E AGENDAS')) ?>">Moleskine & Cadernos</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('MOUSE PADS')) ?>">Mouse Pads</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('CARTEIRAS')) ?>">Carteiras</a></li>
                     </ul>

@@ -41,6 +41,26 @@ final class SiteContent
         ];
     }
 
+    /**
+     * Mapeamento de nome de exibição → categoria real no banco de dados.
+     * Categorias de exibição na home/footer podem ter nomes diferentes dos
+     * valores gravados no banco. Este método traduz para o filtro correto.
+     */
+    private const CATEGORIA_ALIASES = [
+        'CANETAS'             => 'ESCRITA',
+        'MOLESKINE & CADERNOS' => 'CADERNOS E AGENDAS',
+    ];
+
+    /**
+     * Retorna o valor de categoria que deve ser usado no filtro do catálogo.
+     * Se houver um alias, retorna a categoria real; senão, retorna o nome original.
+     */
+    public static function categoriaFiltro(string $nomeExibicao): string
+    {
+        $upper = mb_strtoupper(trim($nomeExibicao), 'UTF-8');
+        return self::CATEGORIA_ALIASES[$upper] ?? $nomeExibicao;
+    }
+
     /** Imagem sobrescrita de uma categoria (ou null para usar a do banco/fallback). */
     public static function categoriaImagem(string $categoria): ?string
     {

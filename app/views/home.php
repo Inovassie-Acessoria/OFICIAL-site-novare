@@ -133,7 +133,7 @@ if ($categorias) {
                 $imgCat = $imgCatAdmin;
             }
         ?>
-            <a href="<?= url('/catalogo?categoria=' . rawurlencode($nomeCat)) ?>" class="flex flex-col items-center gap-2.5 min-w-[90px] group cursor-pointer text-center">
+            <a href="<?= url('/catalogo?categoria=' . rawurlencode(SiteContent::categoriaFiltro($nomeCat))) ?>" class="flex flex-col items-center gap-2.5 min-w-[90px] group cursor-pointer text-center">
                 <div class="w-16 h-16 rounded-full overflow-hidden border border-surface-container shadow-sm group-hover:border-primary/30 group-hover:shadow-md active:scale-95 transition-all flex items-center justify-center bg-surface-container-low">
                     <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="<?= e($nomeCat) ?>" src="<?= e($imgCat) ?>" loading="lazy" />
                 </div>
@@ -740,7 +740,7 @@ if ($categorias) {
         </div>
 
         <!-- Categoria 6: Canetas (Escrita) -->
-        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('CANETAS')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
+        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('ESCRITA')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
             <div class="absolute inset-0 bg-gradient-to-t from-[#006590]/50 via-[#006590]/15 to-transparent z-10"></div>
             <img class="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" alt="Canetas de Luxo Executivas" src="<?= asset('images/cat_canetas.png') ?>" loading="lazy" />
             <div class="absolute bottom-6 left-6 right-6 z-20 text-white">
