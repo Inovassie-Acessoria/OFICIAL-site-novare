@@ -135,7 +135,7 @@ if ($categorias) {
         ?>
             <a href="<?= url('/catalogo?categoria=' . rawurlencode(SiteContent::categoriaFiltro($nomeCat))) ?>" class="flex flex-col items-center gap-2.5 min-w-[90px] group cursor-pointer text-center">
                 <div class="w-16 h-16 rounded-full overflow-hidden border border-surface-container shadow-sm group-hover:border-primary/30 group-hover:shadow-md active:scale-95 transition-all flex items-center justify-center bg-surface-container-low">
-                    <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="<?= e($nomeCat) ?>" src="<?= e($imgCat) ?>" loading="lazy" />
+                    <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="<?= e($nomeCat) ?> Personalizados - Novare Brindes" src="<?= e($imgCat) ?>" loading="lazy" />
                 </div>
                 <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 group-hover:text-primary transition-colors max-w-[110px] whitespace-normal block leading-tight"><?= e($nomeCat) ?></span>
             </a>

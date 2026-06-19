@@ -13,7 +13,7 @@ $img = $p['imagem_principal'] ?? '';
             </span>
         <?php endif; ?>
         <?php if ($img !== ''): ?>
-            <img class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500" src="<?= e($img) ?>" alt="<?= e($p['nome']) ?>" loading="lazy" width="240" height="240">
+            <img class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500" src="<?= e($img) ?>" alt="<?= e($p['nome']) ?> - Brinde Corporativo Personalizado Novare" loading="lazy" width="240" height="240">
         <?php else: ?>
             <div class="text-xs text-slate-400 flex flex-col items-center gap-2">
                 <span class="material-symbols-outlined text-2xl">image_not_supported</span>

@@ -16,10 +16,16 @@ final class CatalogController
 
     public function home(): void
     {
+        $meta = [
+            'description' => 'Brindes corporativos personalizados de alta qualidade para empresas. Canetas personalizadas, kits onboarding, garrafas e presentes executivos sob medida.',
+            'keywords' => 'brindes personalizados, brindes corporativos, canetas personalizadas, kit onboarding, novare brindes, brindes corporativos executivos',
+            'canonical' => urlAbsoluta('/')
+        ];
+
         view('home', [
             'categorias' => $this->repo->categorias(),
             'destaques'  => $this->repo->destaques(8),
-        ], 'Novare Brindes — Brindes corporativos personalizados');
+        ], 'Novare Brindes — Brindes corporativos personalizados', $meta);
     }
 
     public function catalogo(): void
@@ -28,6 +34,36 @@ final class CatalogController
         $pagina  = max(1, qint('pagina', 1));
         $resultado = $this->repo->listar($filtros, $pagina, 24);
 
+        $categoriaSelecionada = $filtros['categoria'] ?? null;
+        
+        if ($categoriaSelecionada) {
+            $tituloSEO = e($categoriaSelecionada) . ' Personalizados | Novare Brindes';
+            $metaDesc = 'Confira nossa linha de ' . e($categoriaSelecionada) . ' personalizados para empresas. Brindes corporativos de alto padrão com entrega rápida para todo o Brasil.';
+            $keywords = e($categoriaSelecionada) . ', brindes corporativos, brindes personalizados, novare brindes';
+            $canonical = urlAbsoluta('/catalogo?categoria=' . rawurlencode($categoriaSelecionada));
+            $breadcrumbs = [
+                ['url' => urlAbsoluta('/'), 'name' => 'Início'],
+                ['url' => urlAbsoluta('/catalogo'), 'name' => 'Catálogo'],
+                ['url' => $canonical, 'name' => $categoriaSelecionada]
+            ];
+        } else {
+            $tituloSEO = 'Catálogo de Brindes Corporativos Personalizados | Novare Brindes';
+            $metaDesc = 'Explore nosso catálogo completo de brindes corporativos personalizados para eventos, feiras e kits onboarding. Solicite seu orçamento via WhatsApp.';
+            $keywords = 'catálogo de brindes, brindes corporativos, brindes personalizados, kit onboarding, canetas personalizadas';
+            $canonical = urlAbsoluta('/catalogo');
+            $breadcrumbs = [
+                ['url' => urlAbsoluta('/'), 'name' => 'Início'],
+                ['url' => $canonical, 'name' => 'Catálogo']
+            ];
+        }
+
+        $meta = [
+            'description' => $metaDesc,
+            'keywords' => $keywords,
+            'canonical' => $canonical,
+            'breadcrumbs' => $breadcrumbs
+        ];
+
         view('catalogo', [
             'resultado'  => $resultado,
             'filtros'    => $filtros,
@@ -35,8 +71,8 @@ final class CatalogController
             'materiais'  => $this->repo->materiais($filtros),
             'cores'      => $this->repo->cores($filtros),
             'faixa'      => $this->repo->faixaPreco(),
-            'titulo_pagina' => $filtros['categoria'] ?? 'Catálogo',
-        ], 'Catálogo — Novare Brindes');
+            'titulo_pagina' => $categoriaSelecionada ?? 'Catálogo',
+        ], $tituloSEO, $meta);
     }
 
     public function busca(): void
@@ -46,6 +82,13 @@ final class CatalogController
         $pagina  = max(1, qint('pagina', 1));
         $resultado = $this->repo->listar($filtros, $pagina, 24);
 
+        // Regra P0 de SEO: Páginas de busca interna devem conter noindex para evitar duplicidade e lixo no índice do Google
+        $meta = [
+            'robots' => 'noindex, follow',
+            'description' => 'Resultados de busca por "' . e($termo) . '" no catálogo de brindes personalizados da Novare Brindes.',
+            'canonical' => urlAbsoluta('/busca?q=' . rawurlencode($termo))
+        ];
+
         view('catalogo', [
             'resultado'  => $resultado,
             'filtros'    => $filtros,
@@ -53,9 +96,9 @@ final class CatalogController
             'materiais'  => $this->repo->materiais($filtros),
             'cores'      => $this->repo->cores($filtros),
             'faixa'      => $this->repo->faixaPreco(),
-            'titulo_pagina' => 'Resultados para "' . $termo . '"',
+            'titulo_pagina' => 'Resultados para "' . e($termo) . '"',
             'eh_busca'   => true,
-        ], 'Busca: ' . $termo . ' — Novare Brindes');
+        ], 'Busca: ' . e($termo) . ' — Novare Brindes', $meta);
     }
 
     public function produto(string $skuPai): void
@@ -65,7 +108,39 @@ final class CatalogController
             $this->erro404();
             return;
         }
-        view('produto', $dados, e($dados['produto']['nome']) . ' — Novare Brindes');
+
+        $nomeProd = $dados['produto']['nome'];
+        $descProd = $dados['produto']['descricao'] ?? '';
+        $categoria = $dados['produto']['categoria'] ?? 'Brindes';
+
+        // Sanitização e formatação da meta descrição de produto (tamanho recomendado: 155 caracteres)
+        $metaDesc = mb_substr(strip_tags($descProd), 0, 150);
+        if (mb_strlen(strip_tags($descProd)) > 150) {
+            $metaDesc .= '...';
+        }
+        if (empty($metaDesc)) {
+            $metaDesc = 'Compre ' . e($nomeProd) . ' personalizado na Novare Brindes. Brindes corporativos de alto padrão para sua empresa com gravação sob medida.';
+        }
+
+        $meta = [
+            'description' => $metaDesc,
+            'keywords' => e($categoria) . ', ' . e($nomeProd) . ', brinde personalizado, brinde corporativo, novare brindes',
+            'canonical' => urlAbsoluta('/produto/' . rawurlencode($skuPai)),
+            'og_image' => $dados['produto']['imagem_principal'] ?? '',
+            'breadcrumbs' => [
+                ['url' => urlAbsoluta('/'), 'name' => 'Início'],
+                ['url' => urlAbsoluta('/catalogo?categoria=' . rawurlencode($categoria)), 'name' => $categoria],
+                ['url' => urlAbsoluta('/produto/' . rawurlencode($skuPai)), 'name' => $nomeProd]
+            ],
+            'product_schema' => [
+                'nome' => $nomeProd,
+                'descricao' => $descProd,
+                'sku' => $skuPai,
+                'imagem' => $dados['produto']['imagem_principal'] ?? ''
+            ]
+        ];
+
+        view('produto', $dados, e($nomeProd) . ' | Novare Brindes', $meta);
     }
 
     public function institucional(string $pagina): void
@@ -75,10 +150,27 @@ final class CatalogController
             'atendimento' => 'Atendimento B2B',
             'fidelidade'  => 'Programa de Fidelidade Corporativo',
         ];
+
+        $descricoes = [
+            'sobre'       => 'Conheça a história da Novare Brindes, nossa missão de elevar a percepção de marcas através de brindes personalizados desenvolvidos com excelência técnica.',
+            'atendimento' => 'Fale com o nosso atendimento corporativo B2B dedicado. Atendimento ágil e consultoria personalizada para a cotação de brindes da sua empresa.',
+            'fidelidade'  => 'Participe do programa de fidelidade corporativo da Novare Brindes e garanta benefícios exclusivos, descontos e prioridade em lotes de brindes.',
+        ];
+
+        $meta = [
+            'description' => $descricoes[$pagina] ?? 'Novare Brindes Corporativos.',
+            'keywords' => ($mapa[$pagina] ?? 'Novare Brindes') . ', brindes corporativos, brindes personalizados, novare',
+            'canonical' => urlAbsoluta('/' . $pagina),
+            'breadcrumbs' => [
+                ['url' => urlAbsoluta('/'), 'name' => 'Início'],
+                ['url' => urlAbsoluta('/' . $pagina), 'name' => $mapa[$pagina] ?? 'Institucional']
+            ]
+        ];
+
         view('institucional', [
             'pagina' => $pagina,
             'titulo_pagina' => $mapa[$pagina] ?? 'Novare Brindes',
-        ], ($mapa[$pagina] ?? 'Novare Brindes') . ' — Novare Brindes');
+        ], ($mapa[$pagina] ?? 'Novare Brindes') . ' | Novare Brindes', $meta);
     }
 
     public function status(): void

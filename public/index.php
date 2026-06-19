@@ -20,6 +20,21 @@ $controller = new CatalogController();
 
 try {
     switch (true) {
+        // ---- SEO Técnico (Sitemap e Robots) ----
+        case $path === '/sitemap.xml':
+            require_once __DIR__ . '/../app/services/SitemapGenerator.php';
+            SitemapGenerator::render();
+            break;
+
+        case $path === '/robots.txt':
+            header('Content-Type: text/plain; charset=utf-8');
+            echo "User-agent: *\n";
+            echo "Disallow: /settings-admin/\n";
+            echo "Disallow: /settings-admin\n";
+            echo "Allow: /\n\n";
+            echo "Sitemap: " . urlAbsoluta('/sitemap.xml') . "\n";
+            break;
+
         // ---- Painel oculto /settings-admin (sem links no site) ----
         case $path === '/settings-admin':
             (new AdminController())->index();

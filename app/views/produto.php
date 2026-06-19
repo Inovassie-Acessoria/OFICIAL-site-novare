@@ -74,7 +74,7 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                     </span>
                 <?php endif; ?>
                 <?php if ($imgInicial !== ''): ?>
-                    <img id="gallery-img" class="max-h-full max-w-full object-contain transition-all duration-300" src="<?= e($imgInicial) ?>" alt="<?= e($produto['nome']) ?>" width="520" height="520">
+                    <img id="gallery-img" class="max-h-full max-w-full object-contain transition-all duration-300" src="<?= e($imgInicial) ?>" alt="<?= e($produto['nome']) ?> - Brinde Personalizado Novare" width="520" height="520">
                 <?php else: ?>
                     <div class="text-slate-400 flex flex-col items-center gap-2">
                         <span class="material-symbols-outlined text-4xl">image_not_supported</span>

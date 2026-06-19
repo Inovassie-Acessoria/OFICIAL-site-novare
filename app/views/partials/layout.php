@@ -3,6 +3,7 @@
  * @var string $conteudo
  * @var string $titulo
  * @var array|null $categorias
+ * @var array|null $meta
  */
 $cats = $categorias ?? [];
 if (!$cats) {
@@ -14,6 +15,156 @@ if (!$cats) {
 }
 // Logo gerenciável pelo painel admin (cai no padrão se não configurado).
 $logoUrl = SiteContent::logo();
+
+// Inicialização segura de metadados dinâmicos para SEO técnico
+$meta = $meta ?? [];
+$metaDesc = $meta['description'] ?? 'Brindes corporativos personalizados para eventos, feiras e kits de onboarding. Atendimento de alta excelência e inteligência de marca.';
+$metaKeywords = $meta['keywords'] ?? 'brindes personalizados, brindes corporativos, canetas personalizadas, kit onboarding, novare brindes';
+$canonicalUrl = $meta['canonical'] ?? urlAbsoluta(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
+$robotsMeta = $meta['robots'] ?? 'index, follow';
+
+// Configurações de Open Graph (Redes sociais, WhatsApp, etc.)
+$ogTitle = $meta['og_title'] ?? ($titulo ?? 'Novare Brindes Corporativos');
+$ogDesc = $meta['og_description'] ?? $metaDesc;
+$ogImg = $meta['og_image'] ?? urlAbsoluta('/assets/images/logo-novare.png');
+if (!empty($ogImg) && !str_starts_with($ogImg, 'http')) {
+    $ogImg = urlAbsoluta($ogImg);
+}
+$ogUrl = $meta['og_url'] ?? $canonicalUrl;
+
+// Geração dinâmica de Schemas Structured Data (JSON-LD) para GEO, AEO e Sitelinks
+$schemas = [];
+
+// 1. WebSite Schema com Sitelinks Searchbox (Somente Home)
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+if ($requestPath === '/' && empty(q('categoria')) && empty(q('sustentavel'))) {
+    $schemas[] = [
+        '@context' => 'https://schema.org',
+        '@type' => 'WebSite',
+        'name' => 'Novare Brindes',
+        'url' => urlAbsoluta('/'),
+        'potentialAction' => [
+            '@type' => 'SearchAction',
+            'target' => urlAbsoluta('/busca?q={search_term_string}'),
+            'query-input' => 'required name=search_term_string'
+        ]
+    ];
+}
+
+// 2. Organization Schema
+$schemas[] = [
+    '@context' => 'https://schema.org',
+    '@type' => 'Organization',
+    'name' => 'Novare Brindes',
+    'url' => urlAbsoluta('/'),
+    'logo' => urlAbsoluta($logoUrl ?: '/assets/images/logo-novare.png'),
+    'contactPoint' => [
+        '@type' => 'ContactPoint',
+        'telephone' => '+' . whatsappNumero(),
+        'contactType' => 'sales',
+        'areaServed' => 'BR',
+        'availableLanguage' => 'Portuguese'
+    ]
+];
+
+// 3. BreadcrumbList Schema
+if (isset($meta['breadcrumbs']) && is_array($meta['breadcrumbs'])) {
+    $itemListElement = [];
+    foreach ($meta['breadcrumbs'] as $idx => $bc) {
+        $itemListElement[] = [
+            '@type' => 'ListItem',
+            'position' => $idx + 1,
+            'name' => $bc['name'],
+            'item' => $bc['url']
+        ];
+    }
+    $schemas[] = [
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => $itemListElement
+    ];
+}
+
+// 4. Product Schema (detalhes do produto)
+if (isset($meta['product_schema']) && is_array($meta['product_schema'])) {
+    $prodSchema = $meta['product_schema'];
+    $prodImg = $prodSchema['imagem'] ?? '';
+    if ($prodImg !== '' && !str_starts_with($prodImg, 'http')) {
+        $prodImg = urlAbsoluta($prodImg);
+    }
+    
+    $schemas[] = [
+        '@context' => 'https://schema.org',
+        '@type' => 'Product',
+        'name' => $prodSchema['nome'],
+        'image' => $prodImg,
+        'description' => mb_substr(strip_tags($prodSchema['descricao'] ?? ''), 0, 300),
+        'sku' => $prodSchema['sku'],
+        'mpn' => $prodSchema['sku'],
+        'brand' => [
+            '@type' => 'Brand',
+            'name' => 'Novare Brindes'
+        ],
+        'offers' => [
+            '@type' => 'AggregateOffer',
+            'priceCurrency' => 'BRL',
+            'price' => '0.00',
+            'priceSpecification' => [
+                '@type' => 'PriceSpecification',
+                'price' => '0.00',
+                'priceCurrency' => 'BRL',
+                'valueAddedTaxIncluded' => 'true'
+            ],
+            'availability' => 'https://schema.org/InStock',
+            'seller' => [
+                '@type' => 'Organization',
+                'name' => 'Novare Brindes'
+            ]
+        ]
+    ];
+}
+
+// 5. FAQPage Schema (AEO) - Home e Sobre
+if ($requestPath === '/' || $requestPath === '/sobre') {
+    $schemas[] = [
+        '@context' => 'https://schema.org',
+        '@type' => 'FAQPage',
+        'mainEntity' => [
+            [
+                '@type' => 'Question',
+                'name' => 'Como solicitar um orçamento de brindes corporativos na Novare Brindes?',
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => 'Você pode solicitar um orçamento personalizado selecionando os produtos em nosso catálogo online e clicando no botão de orçamento via WhatsApp. Nosso time de especialistas responderá rapidamente com uma cotação sob medida contendo os valores faturados, opções de frete e prazos para a sua empresa.'
+                ]
+            ],
+            [
+                '@type' => 'Question',
+                'name' => 'Qual é a quantidade mínima exigida para a compra de brindes personalizados?',
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => 'A quantidade mínima varia de acordo com a categoria do produto (por exemplo, canetas corporativas, squeezes personalizados ou kits de onboarding). A quantidade mínima de cada lote está detalhada na página de especificações do respectivo brinde no catálogo.'
+                ]
+            ],
+            [
+                '@type' => 'Question',
+                'name' => 'Quais são as formas de pagamento disponíveis para empresas?',
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => 'Oferecemos opções flexíveis de faturamento corporativo para empresas, incluindo pagamento faturado via Pix com desconto, boleto bancário faturado e cartão de crédito corporativo parcelado.'
+                ]
+            ],
+            [
+                '@type' => 'Question',
+                'name' => 'Vocês entregam brindes personalizados para todo o Brasil?',
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => 'Sim, realizamos entregas corporativas monitoradas e seguras para todas as regiões do Brasil. Oferecemos condições de frete grátis dependendo do volume do lote e da região. Consulte nossos consultores comerciais no WhatsApp.'
+                ]
+            ]
+        ]
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
@@ -21,8 +172,43 @@ $logoUrl = SiteContent::logo();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e(isset($titulo) ? $titulo . ' | Novare Brindes Corporativos' : 'Novare Brindes Corporativos') ?></title>
-    <link rel="icon" type="image/png" href="<?= url('/assets/images/favicon.png') ?>">
-    <meta name="description" content="Brindes corporativos personalizados para eventos, feiras e kits de onboarding. Atendimento de alta excelência e inteligência de marca.">
+    
+    <!-- Meta tags de indexação -->
+    <meta name="description" content="<?= e($metaDesc) ?>">
+    <meta name="keywords" content="<?= e($metaKeywords) ?>">
+    <meta name="robots" content="<?= e($robotsMeta) ?>">
+    <link rel="canonical" href="<?= e($canonicalUrl) ?>">
+
+    <!-- Tags de Favicon em conformidade com as diretrizes do Google -->
+    <link rel="shortcut icon" href="<?= url('/favicon.ico') ?>" type="image/x-icon">
+    <link rel="icon" href="<?= url('/favicon.png') ?>" type="image/png" sizes="48x48">
+    <link rel="icon" href="<?= url('/assets/images/favicon.png') ?>" type="image/png" sizes="16x16">
+    <link rel="icon" href="<?= url('/assets/images/favicon.png') ?>" type="image/png" sizes="32x32">
+    <link rel="icon" href="<?= url('/assets/images/favicon.png') ?>" type="image/png" sizes="96x96">
+    <link rel="icon" href="<?= url('/assets/images/favicon.png') ?>" type="image/png" sizes="144x144">
+    <link rel="apple-touch-icon" href="<?= url('/assets/images/favicon.png') ?>" sizes="180x180">
+
+    <!-- Open Graph (Facebook / WhatsApp / LinkedIn / Slack) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="<?= e($ogUrl) ?>">
+    <meta property="og:title" content="<?= e($ogTitle) ?>">
+    <meta property="og:description" content="<?= e($ogDesc) ?>">
+    <meta property="og:image" content="<?= e($ogImg) ?>">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="<?= e($ogUrl) ?>">
+    <meta name="twitter:title" content="<?= e($ogTitle) ?>">
+    <meta name="twitter:description" content="<?= e($ogDesc) ?>">
+    <meta name="twitter:image" content="<?= e($ogImg) ?>">
+
+    <!-- Schemas Structured Data JSON-LD -->
+    <?php foreach ($schemas as $s): ?>
+        <script type="application/ld+json">
+            <?= json_encode($s, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
+        </script>
+    <?php endforeach; ?>
+
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
