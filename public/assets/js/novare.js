@@ -179,9 +179,40 @@
         const previewName = document.getElementById('chat-preview-name');
         const previewCancel = document.getElementById('chat-preview-cancel');
 
-        const historico = [];
-        let carregando = false;
-        let imagemBase64 = null; // Guarda a imagem anexada/colada
+            // Gerenciamento de persistência de sessão (Sophia Chat) com limpeza sob recarregamento (F5)
+            try {
+                const navigation = performance.getEntriesByType('navigation')[0];
+                if (navigation && navigation.type === 'reload') {
+                    sessionStorage.removeItem('sophia_chat_history');
+                    sessionStorage.removeItem('sophia_chat_html');
+                }
+            } catch (e) {}
+
+            let historico = [];
+            try {
+                historico = JSON.parse(sessionStorage.getItem('sophia_chat_history') || '[]');
+            } catch (e) {
+                historico = [];
+            }
+
+            let carregando = false;
+            let imagemBase64 = null; // Guarda a imagem anexada/colada
+
+            function salvarSessao() {
+                try {
+                    sessionStorage.setItem('sophia_chat_history', JSON.stringify(historico));
+                    sessionStorage.setItem('sophia_chat_html', body.innerHTML);
+                } catch (e) {}
+            }
+
+            // Restaura o histórico visual caso exista na navegação interna
+            try {
+                const savedHtml = sessionStorage.getItem('sophia_chat_html');
+                if (savedHtml && body) {
+                    body.innerHTML = savedHtml;
+                    body.scrollTop = body.scrollHeight;
+                }
+            } catch (e) {}
 
         // Animação de fade-in tardia do balão lateral (1.5 segundos após load)
         if (balloon) {
@@ -318,6 +349,7 @@
 
             body.appendChild(div);
             body.scrollTop = body.scrollHeight;
+            salvarSessao();
             return div;
         }
 
@@ -345,11 +377,12 @@
                 a.href = p.url;
                 a.innerHTML =
                     (p.imagem ? '<img src="' + p.imagem + '" alt="" class="object-contain">' : '') +
-                    '<div class="info"><strong>' + (p.nome || '') + '</strong><span>' + (p.preco || '') + '</span></div>';
+                    '<div class="info"><strong>' + (p.nome || '') + '</strong></div>';
                 wrap.appendChild(a);
             });
             body.appendChild(wrap);
             body.scrollTop = body.scrollHeight;
+            salvarSessao();
         }
 
         form.addEventListener('submit', function (ev) {
@@ -363,6 +396,7 @@
             addMsg(texto, 'user', imagemBase64);
             
             historico.push({ role: 'user', texto: texto });
+            salvarSessao();
             
             input.value = '';
             carregando = true;
@@ -388,6 +422,7 @@
                     addMsg(resposta, 'bot');
                     historico.push({ role: 'assistant', texto: resposta });
                     addProdutos(data.produtos);
+                    salvarSessao();
                 })
                 .catch(function () {
                     typing.remove();

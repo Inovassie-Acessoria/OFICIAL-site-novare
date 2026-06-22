@@ -95,6 +95,11 @@ $coresValidas = array_column($repo->cores(), 'cor');
 // Persona/comportamento EDITÁVEL pelo painel admin (com padrão embutido).
 $instrucao = SiteContent::iaPersona();
 
+// Injeção de regras críticas de negócio inquebráveis (proibição de preço e briefing consultivo aprofundado)
+$instrucao .= "\n\n# REGRAS CRÍTICAS DE NEGÓCIO (OBRIGATÓRIO SEGUIR À RISCA):";
+$instrucao .= "\n- PROIBIDO MENCIONAR PREÇOS OU CUSTOS: Você de forma alguma deve mencionar preços de produtos, valores em reais ou estimativas de custos no texto de resposta. O catálogo é consultivo B2B e todos os preços são sob consulta comercial.";
+$instrucao .= "\n- BRIEFING CONSULTIVO E DEEP DISCOVERY: Nunca sugira produtos de forma direta ou apressada no início da conversa. Primeiro, atue como consultora investigativa e faça perguntas pontuais e amigáveis (uma ou duas por vez) para entender profundamente a necessidade real do cliente antes de recomendar brindes (ex: pergunte sobre o tipo/objetivo do evento corporativo, perfil de quem vai receber os brindes, quantidade pretendida e prazo de entrega).";
+
 // Conhecimento extra: arquivos de texto anexados pelo admin (complementam a IA).
 $blocosConhecimento = [];
 foreach (SiteContent::iaArquivos() as $arq) {
@@ -223,7 +228,7 @@ foreach ($res['itens'] as $p) {
     $urlProd = urlAbsoluta('/produto/' . rawurlencode($p['sku_pai']));
     $produtos[] = [
         'nome'     => $p['nome'],
-        'preco'    => preco($p['preco_base'] ?? 0),
+        'preco'    => '',
         'imagem'   => $p['imagem_principal'] ?? '',
         'url'      => $urlProd,
         'whatsapp' => whatsappLink(whatsappProduto($p['nome'], $p['sku_pai'])),

@@ -322,7 +322,7 @@ if ($categorias) {
                     <?= $badgeText ?>
                 </div>
 
-                <div class="h-44 flex items-center justify-center mb-6 bg-surface-container-low/30 rounded-xl p-4 mt-4">
+                <div class="h-56 flex items-center justify-center mb-6 bg-surface-container-low/30 rounded-xl p-2 mt-4">
                     <?php if ($img !== ''): ?>
                         <img class="max-h-full max-w-full object-contain group-hover:scale-[1.06] group-hover:rotate-1 transition-transform duration-500" alt="<?= e($p['nome']) ?>" src="<?= e($img) ?>" loading="lazy" />
                     <?php endif; ?>
@@ -393,7 +393,7 @@ if ($categorias) {
                     <?= $badgeText ?>
                 </div>
 
-                <div class="h-44 flex items-center justify-center mb-6 bg-surface-container-low/30 rounded-xl p-4 mt-4">
+                <div class="h-56 flex items-center justify-center mb-6 bg-surface-container-low/30 rounded-xl p-2 mt-4">
                     <?php if ($img !== ''): ?>
                         <img class="max-h-full max-w-full object-contain group-hover:scale-[1.06] group-hover:rotate-1 transition-transform duration-500" alt="<?= e($p['nome']) ?>" src="<?= e($img) ?>" loading="lazy" />
                     <?php endif; ?>
@@ -464,7 +464,7 @@ if ($categorias) {
                     <?= $badgeText ?>
                 </div>
 
-                <div class="h-44 flex items-center justify-center mb-6 bg-surface-container-low/30 rounded-xl p-4 mt-4">
+                <div class="h-56 flex items-center justify-center mb-6 bg-surface-container-low/30 rounded-xl p-2 mt-4">
                     <?php if ($img !== ''): ?>
                         <img class="max-h-full max-w-full object-contain group-hover:scale-[1.06] group-hover:rotate-1 transition-transform duration-500" alt="<?= e($p['nome']) ?>" src="<?= e($img) ?>" loading="lazy" />
                     <?php endif; ?>
@@ -535,7 +535,7 @@ if ($categorias) {
                     <?= $badgeText ?>
                 </div>
 
-                <div class="h-44 flex items-center justify-center mb-6 bg-surface-container-low/30 rounded-xl p-4 mt-4">
+                <div class="h-56 flex items-center justify-center mb-6 bg-surface-container-low/30 rounded-xl p-2 mt-4">
                     <?php if ($img !== ''): ?>
                         <img class="max-h-full max-w-full object-contain group-hover:scale-[1.06] group-hover:rotate-1 transition-transform duration-500" alt="<?= e($p['nome']) ?>" src="<?= e($img) ?>" loading="lazy" />
                     <?php endif; ?>
