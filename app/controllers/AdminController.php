@@ -284,6 +284,26 @@ final class AdminController
                 $w, $h, $regra['rotulo'], $regra['min_w'], $regra['min_h'], $regra['rec']
             )];
         }
+        // LOGO: grava como data URI base64 (vai para o banco em Settings), em vez de
+        // um arquivo solto. A pasta public/assets/uploads NÃO é versionada no Git nem
+        // enviada pelo FTP-Deploy, então um arquivo ali desaparece a cada limpeza/reset
+        // do servidor e o logo caía no genérico. No banco, sobrevive a qualquer deploy.
+        if ($tipo === 'logo') {
+            if (($f['size'] ?? 0) > 1024 * 1024) {
+                return ['ok' => false, 'erro' => 'Logo acima de 1 MB. Use um PNG leve (~600×200 px).'];
+            }
+            $bin = @file_get_contents($f['tmp_name']);
+            if ($bin === false) {
+                return ['ok' => false, 'erro' => 'Não foi possível ler a imagem do logo.'];
+            }
+            return [
+                'ok'      => true,
+                'url'     => 'data:' . $mime . ';base64,' . base64_encode($bin),
+                'largura' => $w,
+                'altura'  => $h,
+            ];
+        }
+
         if (!is_dir(self::UPLOAD_DIR)) {
             @mkdir(self::UPLOAD_DIR, 0775, true);
         }

@@ -57,7 +57,9 @@ $schemas[] = [
     '@type' => 'Organization',
     'name' => 'Novare Brindes',
     'url' => urlAbsoluta('/'),
-    'logo' => urlAbsoluta($logoUrl ?: '/assets/images/logo-novare.png'),
+    // O logo do schema precisa ser uma URL pública e rastreável pelo Google. Se o
+    // logo do painel for um data URI (embutido no banco), usa o arquivo empacotado.
+    'logo' => urlAbsoluta((!$logoUrl || str_starts_with($logoUrl, 'data:')) ? '/assets/images/logo-novare.png' : $logoUrl),
     'contactPoint' => [
         '@type' => 'ContactPoint',
         'telephone' => '+' . whatsappNumero(),
@@ -331,7 +333,7 @@ if ($requestPath === '/' || $requestPath === '/sobre') {
 
             <!-- Actions Row -->
             <div class="flex items-center gap-6">
-                <a href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap hidden xl:block shadow-sm hover:opacity-90 transition-opacity">
+                <a id="whats-header" href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap hidden xl:block shadow-sm hover:opacity-90 transition-opacity">
                     Fale com o Nosso Time &gt;
                 </a>
                 <div class="flex items-center gap-5 text-secondary">
@@ -434,14 +436,14 @@ if ($requestPath === '/' || $requestPath === '/sobre') {
                     <ul class="space-y-3">
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/sobre') ?>">Nossa História</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="https://rastreamento.correios.com.br/app/index.php" target="_blank" rel="noopener">Rastrear Entrega</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">Fale com o Nosso Time</a></li>
+                        <li><a id="whats-footer-time" class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">Fale com o Nosso Time</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo') ?>">Ver Todos os Produtos</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-xs uppercase tracking-widest font-bold mb-6 text-white border-l-2 border-primary pl-3">Contato & Briefing</h4>
                     <ul class="space-y-3">
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider font-semibold" href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">WhatsApp Comercial</a></li>
+                        <li><a id="whats-footer-comercial" class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider font-semibold" href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">WhatsApp Comercial</a></li>
                         <li class="text-slate-500 text-[10px] mt-2 uppercase tracking-wide leading-relaxed">Atendimento rápido<br>Segunda a Sexta-Feira<br>Horário Comercial</li>
                     </ul>
                 </div>

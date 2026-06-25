@@ -25,9 +25,15 @@ final class SiteContent
         $v = Settings::get('logo', null);
         if (is_string($v) && trim($v) !== '') {
             $v = trim($v);
-            // Logo enviado pelo painel é um caminho local sob /assets/. Se o arquivo
-            // não existir mais (ex.: removido em um deploy), usa o empacotado em vez
-            // de quebrar e cair no fallback — é o que causava o "logo sumindo".
+            // Logo gravado como data URI (base64) vive no próprio banco e sobrevive
+            // a QUALQUER limpeza de cache/redeploy — não depende de arquivo no disco.
+            // É a forma à prova de falha; usa direto.
+            if (str_starts_with($v, 'data:image/')) {
+                return $v;
+            }
+            // Compatibilidade com logos antigos salvos como arquivo sob /assets/. Se o
+            // arquivo não existir mais (removido em um deploy/limpeza), usa o empacotado
+            // em vez de quebrar e cair no fallback — era o que causava o "logo sumindo".
             if (str_starts_with($v, '/assets/') && !is_file(APP_ROOT . '/public' . $v)) {
                 return self::LOGO_PADRAO;
             }
