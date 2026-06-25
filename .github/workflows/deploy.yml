@@ -34,6 +34,10 @@ jobs:
             **/.git*
             **/.git*/**
             **/.github/**
+            .agent/**
+            **/.agent/**
+            .vscode/**
+            .idea/**
             .env
             .env.*
             storage/cache/**
