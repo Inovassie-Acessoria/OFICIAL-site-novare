@@ -33,7 +33,7 @@
         const thumbs = document.getElementById('gallery-thumbs');
         const corAtiva = document.getElementById('cor-ativa');
         const skuAtivo = document.getElementById('sku-ativo');
-        const cta = document.getElementById('cta-whats');
+        const cta = document.getElementById('btn-produto-direto') || document.getElementById('cta-whats');
         const swatches = Array.from(document.querySelectorAll('#color-swatches button'));
 
         function montarMsg(sku) {

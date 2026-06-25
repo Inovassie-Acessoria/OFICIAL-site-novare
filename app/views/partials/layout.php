@@ -169,6 +169,13 @@ if ($requestPath === '/' || $requestPath === '/sobre') {
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
 <head>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-TWRJXWFJ');</script>
+    <!-- End Google Tag Manager -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e(isset($titulo) ? $titulo . ' | Novare Brindes Corporativos' : 'Novare Brindes Corporativos') ?></title>
@@ -293,6 +300,10 @@ if ($requestPath === '/' || $requestPath === '/sobre') {
     </style>
 </head>
 <body class="flex flex-col min-h-screen h-full bg-background text-on-background antialiased">
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TWRJXWFJ"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <!-- Promotion Bar -->
     <div class="bg-primary text-on-primary py-2 px-6 text-center text-xs font-semibold tracking-wide shadow-sm">
         Transforme sua marca com brindes que encantam. Atendimento especializado!
