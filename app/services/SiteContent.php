@@ -154,11 +154,15 @@ final class SiteContent
         return array_values(array_filter(array_map(static fn ($s) => trim((string) $s), $v), static fn ($s) => $s !== ''));
     }
 
-    /** Persona/comportamento editável da IA (sem o formato JSON, que é fixo). */
+    /**
+     * Persona/comportamento da IA. FIXO no código — não é mais editável pelo
+     * painel. A Sophia obedece SOMENTE o que está programado em iaPersonaPadrao(),
+     * para garantir comportamento previsível (prompts salvos no painel eram
+     * ignorados de propósito porque sobrescreviam e quebravam as instruções).
+     */
     public static function iaPersona(): string
     {
-        $p = Settings::get('ia_prompt', null);
-        return is_string($p) && trim($p) !== '' ? $p : self::iaPersonaPadrao();
+        return self::iaPersonaPadrao();
     }
 
     public static function iaPersonaPadrao(): string
@@ -216,10 +220,12 @@ Quando o cliente demonstrar interesse (gostou de um item, quer saber prazos ou o
 TXT;
     }
 
-    /** Arquivos de conhecimento da IA: lista de {nome, arquivo, tipo, tamanho}. */
+    /**
+     * Arquivos de conhecimento da IA — DESATIVADO. A Sophia segue apenas o prompt
+     * programado (iaPersonaPadrao); nenhuma base extra do painel é injetada.
+     */
     public static function iaArquivos(): array
     {
-        $a = Settings::get('ia_arquivos', []);
-        return is_array($a) ? $a : [];
+        return [];
     }
 }

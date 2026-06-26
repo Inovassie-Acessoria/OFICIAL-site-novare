@@ -12,7 +12,6 @@ final class AdminController
 {
     private const UPLOAD_DIR  = APP_ROOT . '/public/assets/uploads';
     private const UPLOAD_URL  = '/assets/uploads';
-    private const IA_DIR      = APP_ROOT . '/storage/ia';
 
     /** Tipos de imagem e dimensões mínimas (px) por uso — garante responsividade. */
     private const REGRAS_IMG = [
@@ -93,8 +92,6 @@ final class AdminController
             'banners'    => SiteContent::banners(),
             'cats'       => $cats,
             'tops'       => $tops,
-            'iaPersona'  => SiteContent::iaPersona(),
-            'iaArquivos' => SiteContent::iaArquivos(),
             'regras'     => self::REGRAS_IMG,
         ]);
     }
@@ -134,13 +131,6 @@ final class AdminController
                 $msg = (self::TOPS[$secao] ?? 'Ranking') . ' atualizado.';
                 break;
 
-            case 'ia':
-                Settings::set('ia_prompt', trim((string) ($_POST['ia_prompt'] ?? '')));
-                $arqs = $this->jsonInput('ia_arquivos');
-                Settings::set('ia_arquivos', is_array($arqs) ? $arqs : []);
-                $msg = 'Configuração da IA atualizada.';
-                break;
-
             default:
                 $msg = 'Nada para salvar.';
         }
@@ -164,10 +154,6 @@ final class AdminController
             $this->jsonOut(['ok' => false, 'erro' => 'Token inválido.'], 403);
         }
         $tipo = (string) ($_POST['tipo'] ?? 'banner');
-
-        if ($tipo === 'ia') {
-            $this->jsonOut($this->uploadArquivoIa());
-        }
         $this->jsonOut($this->uploadImagem($tipo));
     }
 
@@ -312,32 +298,6 @@ final class AdminController
             return ['ok' => false, 'erro' => 'Não foi possível salvar a imagem.'];
         }
         return ['ok' => true, 'url' => self::UPLOAD_URL . '/' . $nome, 'largura' => $w, 'altura' => $h];
-    }
-
-    /** @return array<string,mixed> */
-    private function uploadArquivoIa(): array
-    {
-        $f = $_FILES['arquivo'] ?? null;
-        if (!is_array($f) || ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            return ['ok' => false, 'erro' => 'Falha no envio do arquivo.'];
-        }
-        if (($f['size'] ?? 0) > 2 * 1024 * 1024) {
-            return ['ok' => false, 'erro' => 'Arquivo acima de 2 MB.'];
-        }
-        $nomeOrig = (string) ($f['name'] ?? 'arquivo');
-        $ext = strtolower(pathinfo($nomeOrig, PATHINFO_EXTENSION));
-        $permitidos = ['txt', 'md', 'csv', 'json'];
-        if (!in_array($ext, $permitidos, true)) {
-            return ['ok' => false, 'erro' => 'Para a IA, use arquivos de texto: ' . implode(', ', $permitidos) . '.'];
-        }
-        if (!is_dir(self::IA_DIR)) {
-            @mkdir(self::IA_DIR, 0775, true);
-        }
-        $armazenado = 'ia_' . bin2hex(random_bytes(6)) . '.' . $ext;
-        if (!@move_uploaded_file($f['tmp_name'], self::IA_DIR . '/' . $armazenado)) {
-            return ['ok' => false, 'erro' => 'Não foi possível salvar o arquivo.'];
-        }
-        return ['ok' => true, 'arquivo' => $armazenado, 'nome' => $nomeOrig, 'tipo' => $ext, 'tamanho' => (int) $f['size']];
     }
 
     /* ========================= HELPERS ========================= */

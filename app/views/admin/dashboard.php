@@ -7,8 +7,6 @@
  * @var array  $banners
  * @var array  $cats     map CATEGORIA => url atual
  * @var array  $tops     map chave => ['rotulo'=>..., 'produtos'=>[...]]
- * @var string $iaPersona
- * @var array  $iaArquivos
  * @var array  $regras
  */
 $enc = static fn ($v) => json_encode($v, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -53,7 +51,6 @@ foreach ($tops as $chave => $info) {
         <a href="#top_cadernos" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300">Top Cadernos</a>
         <a href="#top_garrafas" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300">Top Garrafas</a>
         <a href="#top_mochilas" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300">Top Mochilas</a>
-        <a href="#ia" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300">IA Sophia</a>
     </nav>
 
     <!-- ============ 1) LOGO ============ -->
@@ -141,31 +138,6 @@ foreach ($tops as $chave => $info) {
         </section>
     <?php endforeach; ?>
 
-    <!-- ============ 8) IA ============ -->
-    <section id="ia" class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
-        <h2 class="text-lg font-black text-white flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-sky-400">smart_toy</span> IA Sophia — prompt &amp; conhecimento</h2>
-        <p class="text-xs text-slate-400 mb-4">Edite a personalidade/orientação da assistente. O formato de resposta (JSON) é mantido automaticamente pelo sistema. Anexe arquivos de texto (.txt, .md, .csv, .json) para complementar o conhecimento dela.</p>
-        <form method="post" action="/settings-admin/salvar">
-            <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
-            <input type="hidden" name="secao" value="ia">
-            <input type="hidden" name="ia_arquivos" id="ia-json">
-            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Prompt / comunicação</label>
-            <textarea name="ia_prompt" rows="12" class="w-full rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-sm px-4 py-3 font-mono leading-relaxed focus:ring-2 focus:ring-sky-500/40 outline-none"><?= e($iaPersona) ?></textarea>
-
-            <div class="mt-5">
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Arquivos de conhecimento</label>
-                <div id="ia-files" class="space-y-2 mb-3"></div>
-                <label class="cursor-pointer inline-flex items-center gap-2 text-sm bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg w-fit">
-                    <span class="material-symbols-outlined text-base">attach_file</span> Inserir arquivo
-                    <input type="file" accept=".txt,.md,.csv,.json" class="hidden" id="ia-upload">
-                </label>
-                <span id="ia-msg" class="upload-msg text-[11px] text-slate-400 ml-2"></span>
-            </div>
-
-            <button class="mt-5 bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold px-5 py-2.5 rounded-lg">Salvar IA</button>
-        </form>
-    </section>
-
     <p class="text-center text-[10px] text-slate-600 pt-4">Novare Brindes &copy; <?= date('Y') ?> — painel interno</p>
 </main>
 
@@ -174,7 +146,6 @@ const CSRF = <?= $enc($csrf) ?>;
 let BANNERS  = <?= $enc($banners) ?>;
 let CATS     = <?= $enc((object) $cats) ?>;
 let TOPS     = <?= $enc((object) $topsJs) ?>;
-let IA_FILES = <?= $enc(array_values($iaArquivos)) ?>;
 
 /* ---------- API ---------- */
 async function apiUpload(file, tipo) {
@@ -452,30 +423,4 @@ document.querySelectorAll('[data-top]').forEach(function (listEl) {
     form.addEventListener('submit', () => { jsonInp.value = JSON.stringify((TOPS[chave] || []).map(p => p.sku)); });
     render();
 });
-
-/* ---------- IA arquivos ---------- */
-const iaFilesEl = document.getElementById('ia-files');
-function renderIaFiles() {
-    iaFilesEl.innerHTML = '';
-    IA_FILES.forEach((a, i) => {
-        const el = document.createElement('div');
-        el.className = 'flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2';
-        el.innerHTML = '<span class="material-symbols-outlined text-sky-400 text-base">description</span>' +
-            '<span class="flex-grow text-xs text-slate-200 truncate">' + esc(a.nome) + '</span>' +
-            '<span class="text-[10px] text-slate-500">' + (a.tipo || '') + '</span>' +
-            '<button type="button" class="rm text-red-300 hover:text-red-200"><span class="material-symbols-outlined text-base">close</span></button>';
-        el.querySelector('.rm').addEventListener('click', () => { IA_FILES.splice(i, 1); renderIaFiles(); });
-        iaFilesEl.appendChild(el);
-    });
-}
-document.getElementById('ia-upload').addEventListener('change', async function () {
-    if (!this.files[0]) return;
-    const msg = document.getElementById('ia-msg'); msg.textContent = 'Enviando...'; msg.className='upload-msg text-[11px] text-slate-400 ml-2';
-    const res = await apiUpload(this.files[0], 'ia');
-    if (!res.ok) { msg.textContent = res.erro; msg.className='upload-msg text-[11px] text-red-300 ml-2'; this.value=''; return; }
-    IA_FILES.push({ nome: res.nome, arquivo: res.arquivo, tipo: res.tipo, tamanho: res.tamanho });
-    msg.textContent = 'Arquivo anexado.'; msg.className='upload-msg text-[11px] text-emerald-300 ml-2'; this.value=''; renderIaFiles();
-});
-document.querySelector('#ia form').addEventListener('submit', () => { document.getElementById('ia-json').value = JSON.stringify(IA_FILES); });
-renderIaFiles();
 </script>
