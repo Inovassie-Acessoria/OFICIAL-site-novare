@@ -203,6 +203,46 @@ if ($action === 'migrate') {
     } catch (Throwable $e) {
         $error = "Erro ao recriar índice de busca: " . $e->getMessage();
     }
+} elseif ($action === 'testar-ia') {
+    // Diagnóstico: testa se ESTE servidor consegue falar com o Gemini usando a
+    // GEMINI_API_KEY do .env de produção. Não altera nada. Se falhar, a Sophia
+    // fica presa no modo de busca simples ("Veja algumas opções...").
+    $key   = trim((string) (Env::get('GEMINI_API_KEY', '') ?? ''));
+    $model = (string) (Env::get('GEMINI_MODEL', 'gemini-2.5-flash') ?? 'gemini-2.5-flash');
+    if ($key === '') {
+        $error = "GEMINI_API_KEY está VAZIA no .env deste servidor. É por isso que a Sophia não responde de forma inteligente. "
+            . "Edite o arquivo .env na Hostinger e defina GEMINI_API_KEY (chave AIza... do Google AI Studio).";
+    } else {
+        $mascara = substr($key, 0, 6) . '...' . substr($key, -4);
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent?key=' . urlencode($key);
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_POSTFIELDS     => json_encode(['contents' => [['role' => 'user', 'parts' => [['text' => 'ok']]]]]),
+            CURLOPT_TIMEOUT        => 25,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        $body  = curl_exec($ch);
+        $code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $errno = curl_errno($ch);
+        $errstr = curl_error($ch);
+        curl_close($ch);
+
+        if ($errno !== 0) {
+            $error = "Falha de REDE/SSL ao chamar o Gemini (errno {$errno}: {$errstr}). Chave {$mascara}, modelo {$model}. "
+                . "Pode ser o certificado SSL do servidor bloqueando a saída para o Google.";
+        } elseif ($code === 200) {
+            $message = "✅ Gemini OK! Este servidor falou com a IA (HTTP 200, modelo {$model}, chave {$mascara}). "
+                . "A Sophia já deve responder de forma inteligente — teste o chat.";
+        } else {
+            $j = json_decode((string) $body, true);
+            $detalhe = isset($j['error']['message']) ? ' Google: ' . $j['error']['message'] : '';
+            $error = "Gemini recusou (HTTP {$code}, chave {$mascara}, modelo {$model})." . $detalhe
+                . " Geralmente é chave inválida (HTTP 400) ou modelo sem acesso. Corrija GEMINI_API_KEY / GEMINI_MODEL no .env do servidor.";
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -341,6 +381,7 @@ if ($action === 'migrate') {
         </a>
         <a href="?action=seed" class="btn btn-outline">Alternativa: popular com 6 itens de teste</a>
         <a href="?action=reindex" class="btn btn-outline">Reparar índice de busca (incluir tags) — sem apagar dados</a>
+        <a href="?action=testar-ia" class="btn btn-outline">🤖 Testar conexão da IA (Gemini) — diagnostica a Sophia</a>
         <a href="/" class="btn btn-outline">Ir para o Site Inicial</a>
 
         <div class="footer">
