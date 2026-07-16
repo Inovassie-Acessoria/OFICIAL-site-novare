@@ -120,6 +120,12 @@
         font-weight: 800;
         margin-top: 1px;
     }
+    /* Ocultado temporariamente via CSS conforme solicitação */
+    #chat-balloon,
+    [data-chat-open],
+    #chat-panel {
+        display: none !important;
+    }
 </style>
 
 <!-- Balão de Apoio Lateral "não achou o produto? clique aqui" (rounded-xl) -->
