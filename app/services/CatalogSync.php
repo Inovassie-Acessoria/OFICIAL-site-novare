@@ -108,12 +108,13 @@ final class CatalogSync
 
         $upProduto = $pdo->prepare(
             'INSERT INTO produtos
-                (sku_pai, nome, descricao, categoria, material, preco_base, sustentavel, imagem_principal, tags, ativo, synced_at)
-             VALUES (:sku, :nome, :desc, :cat, :mat, :preco, :sus, :img, :tags, 1, :sy)
+                (sku_pai, nome, descricao, categoria, material, preco_base, quantidade_minima, sustentavel, imagem_principal, tags, ativo, synced_at)
+             VALUES (:sku, :nome, :desc, :cat, :mat, :preco, :qmin, :sus, :img, :tags, 1, :sy)
              ON DUPLICATE KEY UPDATE
                 id = LAST_INSERT_ID(id),
                 nome = VALUES(nome), descricao = VALUES(descricao), categoria = VALUES(categoria),
-                material = VALUES(material), preco_base = VALUES(preco_base), sustentavel = VALUES(sustentavel),
+                material = VALUES(material), preco_base = VALUES(preco_base),
+                quantidade_minima = VALUES(quantidade_minima), sustentavel = VALUES(sustentavel),
                 imagem_principal = VALUES(imagem_principal), tags = VALUES(tags), ativo = 1, synced_at = VALUES(synced_at)'
         );
 
@@ -180,10 +181,11 @@ final class CatalogSync
                 $material    = ProductMapper::material($nome, $descricao);
                 $sustentavel = ProductMapper::sustentavel($nome, $descricao) ? 1 : 0;
                 $tags        = ProductMapper::gerarTags($categoria, $nome, $descricao);
+                $qtdMinima   = ProductMapper::quantidadeMinima($precoBase);
 
                 $upProduto->execute([
                     ':sku' => $skuPai, ':nome' => $nome, ':desc' => $descricao !== '' ? $descricao : null,
-                    ':cat' => $categoria, ':mat' => $material, ':preco' => $precoBase,
+                    ':cat' => $categoria, ':mat' => $material, ':preco' => $precoBase, ':qmin' => $qtdMinima,
                     ':sus' => $sustentavel, ':img' => $imgPrincipal, ':tags' => $tags, ':sy' => $syncStamp,
                 ]);
                 $produtoId = (int) $pdo->lastInsertId();

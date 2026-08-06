@@ -203,6 +203,46 @@ if ($action === 'migrate') {
     } catch (Throwable $e) {
         $error = "Erro ao recriar índice de busca: " . $e->getMessage();
     }
+} elseif ($action === 'qtd-minima') {
+    // Recalcula o pedido mínimo de TODOS os produtos a partir do preco_base.
+    // NÃO apaga dados — só preenche a coluna quantidade_minima. A partir daqui
+    // o sync da XBZ já mantém o valor atualizado sozinho a cada importação.
+    // Faixas (espelham ProductMapper::quantidadeMinima):
+    //   até R$ 2,00 => 200 | até R$ 5,00 => 100 | até R$ 20,00 => 50 | acima => 20
+    try {
+        $pdo = Database::connection();
+        if (!$pdo->query("SHOW TABLES LIKE 'produtos'")->fetch()) {
+            throw new Exception("Tabela 'produtos' não existe. Execute a Migração (passo 1) primeiro.");
+        }
+
+        $afetados = $pdo->exec(
+            "UPDATE produtos SET quantidade_minima = CASE
+                 WHEN preco_base IS NULL OR preco_base <= 0 THEN NULL
+                 WHEN preco_base <= 2.00  THEN 200
+                 WHEN preco_base <= 5.00  THEN 100
+                 WHEN preco_base <= 20.00 THEN 50
+                 ELSE 20
+             END"
+        );
+
+        $resumo = $pdo->query(
+            "SELECT quantidade_minima AS q, COUNT(*) AS n FROM produtos
+             GROUP BY quantidade_minima ORDER BY quantidade_minima IS NULL, quantidade_minima DESC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        $partes = [];
+        foreach ($resumo as $linha) {
+            $partes[] = $linha['q'] === null
+                ? "{$linha['n']} sem preço (não exibem a QTD Mínima)"
+                : "{$linha['n']} com mínimo de {$linha['q']} un.";
+        }
+
+        Cache::flush();
+        $message = "Quantidade mínima recalculada em todo o catálogo ({$afetados} produtos gravados). "
+            . 'Distribuição: ' . implode(' · ', $partes) . '.';
+    } catch (Throwable $e) {
+        $error = "Erro ao recalcular a quantidade mínima: " . $e->getMessage();
+    }
 } elseif ($action === 'testar-ia') {
     // Diagnóstico: testa se ESTE servidor consegue falar com o Gemini usando a
     // GEMINI_API_KEY do .env de produção. Não altera nada. Se falhar, a Sophia
@@ -381,6 +421,7 @@ if ($action === 'migrate') {
         </a>
         <a href="?action=seed" class="btn btn-outline">Alternativa: popular com 6 itens de teste</a>
         <a href="?action=reindex" class="btn btn-outline">Reparar índice de busca (incluir tags) — sem apagar dados</a>
+        <a href="?action=qtd-minima" class="btn btn-outline">📦 Recalcular quantidade mínima por faixa de preço — sem apagar dados</a>
         <a href="?action=testar-ia" class="btn btn-outline">🤖 Testar conexão da IA (Gemini) — diagnostica a Sophia</a>
         <a href="/" class="btn btn-outline">Ir para o Site Inicial</a>
 

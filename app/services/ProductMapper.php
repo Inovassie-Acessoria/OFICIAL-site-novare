@@ -78,6 +78,24 @@ final class ProductMapper
         'Metal'           => ['METAL', 'METALIC'],
     ];
 
+    /**
+     * Faixas de pedido mínimo por preço-base, em CENTAVOS: [teto, qtd_minima].
+     * Ordem crescente; o 1º teto que cobrir o preço vence. Acima do último
+     * teto aplica-se QTD_MINIMA_TOPO.
+     *
+     *   R$ 0,01 – R$  2,00 => 200 un.
+     *   R$ 2,01 – R$  5,00 => 100 un.
+     *   R$ 5,01 – R$ 20,00 =>  50 un.
+     *   acima de R$ 20,00  =>  20 un.
+     */
+    private const FAIXAS_QTD_MINIMA = [
+        [200,  200],
+        [500,  100],
+        [2000,  50],
+    ];
+
+    private const QTD_MINIMA_TOPO = 20;
+
     private const SUSTENTAVEL_KW = [
         'BAMBU', 'ECOLOG', 'ECOBAG', 'SUSTENTAVEL', 'RECICL', 'RPET',
         'KRAFT', 'ALGODAO', 'BIODEGRAD', 'CORTICA', 'FIBRA', 'TRIGO', 'RETORNAVEL',
@@ -150,6 +168,33 @@ final class ProductMapper
             }
         }
         return false;
+    }
+
+    /**
+     * Pedido mínimo (em unidades) derivado do preço-base do produto.
+     *
+     * Comparação feita em centavos (int) para não escorregar em fronteira de
+     * faixa por imprecisão de float — R$ 2,00 tem de cair em 200 un., e
+     * R$ 2,01 em 100 un.
+     *
+     * Sem preço (NULL ou <= 0) => null: o produto simplesmente não exibe a
+     * quantidade mínima, em vez de receber um valor chutado.
+     */
+    public static function quantidadeMinima(float|int|string|null $precoBase): ?int
+    {
+        if ($precoBase === null || $precoBase === '') {
+            return null;
+        }
+        $centavos = (int) round((float) $precoBase * 100);
+        if ($centavos <= 0) {
+            return null;
+        }
+        foreach (self::FAIXAS_QTD_MINIMA as [$teto, $qtd]) {
+            if ($centavos <= $teto) {
+                return $qtd;
+            }
+        }
+        return self::QTD_MINIMA_TOPO;
     }
 
     /**

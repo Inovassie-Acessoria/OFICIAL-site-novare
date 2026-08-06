@@ -103,10 +103,23 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                 <h1 class="text-3xl font-black text-on-surface tracking-tighter leading-tight mb-2"><?= e($produto['nome']) ?></h1>
                 
                 <!-- SKU e Códigos -->
+                <?php
+                // Pedido mínimo: vem gravado no banco (preenchido pelo sync a partir
+                // do preço-base). O fallback recalcula na hora caso a coluna ainda
+                // esteja vazia — produto sem preço fica sem o dado, sem chute.
+                $qtdMinima = $produto['quantidade_minima'] ?? null;
+                if ($qtdMinima === null || (int) $qtdMinima <= 0) {
+                    $qtdMinima = ProductMapper::quantidadeMinima($produto['preco_base'] ?? null);
+                }
+                ?>
                 <div class="text-xs text-slate-400 font-medium mb-6 flex flex-wrap gap-x-4 gap-y-1">
                     <span>Cód. base: <strong class="text-secondary font-semibold"><?= e($produto['sku_pai']) ?></strong></span>
                     <span>·</span>
                     <span>SKU Ativo: <strong id="sku-ativo" class="text-primary font-bold"><?= e($primeira['sku_completo'] ?? $produto['sku_pai']) ?></strong></span>
+                    <?php if ($qtdMinima): ?>
+                        <span>·</span>
+                        <span>QTD Mínima: <strong class="text-secondary font-semibold"><?= (int) $qtdMinima ?> un.</strong></span>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Aviso de Orçamento (preço removido — catálogo consultivo) -->
