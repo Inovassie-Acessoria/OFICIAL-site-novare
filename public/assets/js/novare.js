@@ -432,6 +432,42 @@
         });
     }
 
+    /* ---------- Google Tag Manager / Analytics DataLayer Helper ---------- */
+    window.dataLayer = window.dataLayer || [];
+    function pushEvent(event, params) {
+        try {
+            window.dataLayer.push(Object.assign({ event: event }, params || {}));
+        } catch (err) {
+            console.warn('[Tracking]', err);
+        }
+    }
+
+    /* ---------- Rastreamento Global de Cliques no WhatsApp (GTM / GA4 / Google Ads) ---------- */
+    document.addEventListener('click', function (e) {
+        const link = e.target.closest('a[href*="wa.me"], a[href*="api.whatsapp.com"], a[href*="whatsapp"]');
+        if (!link) return;
+
+        const buttonId = link.id || 'whats-generic';
+        let prodName = null;
+        let prodSku = null;
+
+        const prodEl = document.querySelector('[data-produto]');
+        if (prodEl && (buttonId === 'btn-produto-direto' || buttonId === 'cta-whats')) {
+            prodName = prodEl.dataset.nome || '';
+            const skuEl = document.getElementById('sku-ativo');
+            prodSku = skuEl ? skuEl.textContent.trim() : (prodEl.dataset.sku || '');
+        }
+
+        pushEvent('whatsapp_click', {
+            button_id: buttonId,
+            button_text: (link.textContent || '').trim().replace(/\s+/g, ' '),
+            product_name: prodName,
+            product_sku: prodSku,
+            link_url: link.href,
+            page_location: window.location.href
+        });
+    });
+
     /* ---------- Formulário de Newsletter (Envio Assíncrono com Feedback Verde) ---------- */
     const newsForm = document.getElementById('newsletter-form');
     const newsSuccess = document.getElementById('newsletter-success');
@@ -442,6 +478,13 @@
             btn.innerHTML = `<span class="inline-block animate-spin mr-1">&#8635;</span> PROCESSANDO...`;
             btn.disabled = true;
             
+            // Dispara evento de conversão de lead no Google Tag Manager / GA4 / Google Ads
+            pushEvent('generate_lead', {
+                lead_type: 'newsletter',
+                form_id: 'newsletter-form',
+                page_location: window.location.href
+            });
+
             // Simula o AJAX de cadastro com tempo de resposta refinado de 1 segundo
             setTimeout(() => {
                 newsForm.style.display = 'none';
