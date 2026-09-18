@@ -94,8 +94,8 @@ final class ProductRepository
             $total = (int) $stmtC->fetchColumn();
 
             // página de dados ($porPagina/$offset já são inteiros validados)
-            $sql = "SELECT p.id, p.sku_pai, p.nome, p.categoria, p.material,
-                           p.preco_base, p.sustentavel, {$imgSelect} {$matchSelect}
+            $sql = "SELECT p.id, p.sku_pai, p.slug, p.nome, p.categoria, p.material, p.quantidade_minima,
+                           p.preco_base, p.sustentavel, p.imagem_local, {$imgSelect} {$matchSelect}
                     FROM produtos p
                     WHERE {$whereSql}
                     ORDER BY {$orderBy}
@@ -335,11 +335,76 @@ final class ProductRepository
      */
     public function buscarPorSkuPai(string $skuPai): ?array
     {
-        $chave = 'prod:' . md5($skuPai);
+        return $this->carregarProduto('sku_pai', $skuPai);
+    }
 
-        return Cache::remember($chave, self::TTL, function () use ($skuPai) {
-            $stmt = $this->pdo->prepare('SELECT * FROM produtos WHERE sku_pai = :sku AND ativo = 1');
-            $stmt->execute([':sku' => $skuPai]);
+    /** Página de produto pela URL canônica (/brindes/produto/{slug}). */
+    public function buscarPorSlug(string $slug): ?array
+    {
+        return $this->carregarProduto('slug', $slug);
+    }
+
+    /** Só o slug de um SKU — usado pelo 301 das URLs antigas (/produto/{sku}). */
+    public function slugPorSku(string $skuPai): ?string
+    {
+        return Cache::remember('slug:' . md5($skuPai), self::TTL, function () use ($skuPai) {
+            $st = $this->pdo->prepare('SELECT slug FROM produtos WHERE sku_pai = :sku LIMIT 1');
+            $st->execute([':sku' => $skuPai]);
+            $slug = $st->fetchColumn();
+            return $slug ? (string) $slug : null;
+        });
+    }
+
+    /**
+     * Produtos relacionados com critério: mesma categoria e quantidade mínima
+     * parecida (perfil de compra semelhante), só indexáveis. Relacionado
+     * aleatório não ajuda nem o usuário nem o rastreio.
+     */
+    public function relacionados(array $produto, int $limite = 8): array
+    {
+        $limite = max(1, min(12, $limite));
+        $chave  = 'rel:' . md5($produto['sku_pai'] . '|' . $limite . '|' . (int) Seo::portaoAtivo());
+        return Cache::remember($chave, self::TTL, function () use ($produto, $limite) {
+            $where = "p.ativo = 1 AND p.imagem_principal IS NOT NULL AND p.imagem_principal <> ''
+                      AND p.categoria = :cat AND p.id <> :id";
+            if (Seo::portaoAtivo()) {
+                $where .= ' AND p.seo_indexavel = 1';
+            }
+            $st = $this->pdo->prepare(
+                "SELECT p.sku_pai, p.slug, p.nome, p.categoria, p.sustentavel, p.imagem_principal, p.imagem_local, p.quantidade_minima
+                 FROM produtos p WHERE {$where}
+                 ORDER BY ABS(COALESCE(p.quantidade_minima, 0) - :qmin), p.id
+                 LIMIT {$limite}"
+            );
+            $st->execute([
+                ':cat'  => (string) ($produto['categoria'] ?? ''),
+                ':id'   => (int) $produto['id'],
+                ':qmin' => (int) ($produto['quantidade_minima'] ?? 0),
+            ]);
+            return $st->fetchAll();
+        });
+    }
+
+    /** Total de produtos listáveis numa categoria (portão de categoria + resumo da página). */
+    public function contarCategoria(string $nome): int
+    {
+        return (int) Cache::remember('catn:' . md5($nome), self::TTL, function () use ($nome) {
+            $st = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL
+                 AND imagem_principal <> '' AND categoria = :c"
+            );
+            $st->execute([':c' => $nome]);
+            return (int) $st->fetchColumn();
+        });
+    }
+
+    private function carregarProduto(string $campo, string $valor): ?array
+    {
+        $chave = 'prod:' . $campo . ':' . md5($valor);
+
+        return Cache::remember($chave, self::TTL, function () use ($campo, $valor) {
+            $stmt = $this->pdo->prepare("SELECT * FROM produtos WHERE {$campo} = :v AND ativo = 1");
+            $stmt->execute([':v' => $valor]);
             $produto = $stmt->fetch();
             if (!$produto) {
                 return null;
@@ -375,14 +440,29 @@ final class ProductRepository
         });
     }
 
-    /** Categorias ativas com contagem (sidebar/home). */
+    /**
+     * Categorias com produto, com contagem e slug (sidebar/home/sitemap).
+     * Vem da tabela `categorias` (identidade estável da URL); cai na
+     * agregação direta de produtos se a migração de SEO ainda não rodou.
+     */
     public function categorias(): array
     {
         return Cache::remember('cats', self::TTL, function () {
-            $sql = 'SELECT categoria, COUNT(*) AS total FROM produtos
-                    WHERE ativo = 1 AND categoria IS NOT NULL AND categoria <> ""
-                    GROUP BY categoria ORDER BY total DESC';
-            return $this->pdo->query($sql)->fetchAll();
+            try {
+                $sql = "SELECT c.nome AS categoria, c.slug, c.seo_indexavel, COUNT(p.id) AS total
+                        FROM categorias c
+                        LEFT JOIN produtos p ON p.categoria = c.nome AND p.ativo = 1
+                             AND p.imagem_principal IS NOT NULL AND p.imagem_principal <> ''
+                        GROUP BY c.id
+                        HAVING total > 0
+                        ORDER BY total DESC";
+                return $this->pdo->query($sql)->fetchAll();
+            } catch (Throwable $e) {
+                $sql = 'SELECT categoria, NULL AS slug, 1 AS seo_indexavel, COUNT(*) AS total FROM produtos
+                        WHERE ativo = 1 AND categoria IS NOT NULL AND categoria <> ""
+                        GROUP BY categoria ORDER BY total DESC';
+                return $this->pdo->query($sql)->fetchAll();
+            }
         });
     }
 
@@ -503,7 +583,7 @@ final class ProductRepository
         }
         
         return Cache::remember("dest:{$limite}", self::TTL, function () use ($limite) {
-            $sql = "SELECT id, sku_pai, nome, categoria, preco_base, sustentavel, imagem_principal
+            $sql = "SELECT id, sku_pai, slug, nome, categoria, preco_base, sustentavel, imagem_principal, imagem_local
                     FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''
                     ORDER BY created_at DESC LIMIT {$limite}";
             return $this->pdo->query($sql)->fetchAll();
@@ -526,7 +606,7 @@ final class ProductRepository
         }
         $skus = array_slice($skus, 0, 50);
         $ph   = implode(',', array_fill(0, count($skus), '?'));
-        $sql  = "SELECT sku_pai, nome, categoria, preco_base, sustentavel, imagem_principal
+        $sql  = "SELECT sku_pai, slug, nome, categoria, preco_base, sustentavel, imagem_principal, imagem_local
                  FROM produtos
                  WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''
                    AND sku_pai IN ({$ph})";

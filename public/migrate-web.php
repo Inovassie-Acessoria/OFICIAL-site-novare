@@ -7,6 +7,11 @@ require_once __DIR__ . '/../app/services/XBZService.php';
 require_once __DIR__ . '/../app/services/ProductMapper.php';
 require_once __DIR__ . '/../app/services/Cache.php';
 require_once __DIR__ . '/../app/services/CatalogSync.php';
+require_once __DIR__ . '/../app/services/Settings.php';
+require_once __DIR__ . '/../app/services/Seo.php';
+require_once __DIR__ . '/../app/services/SeoMigration.php';
+require_once __DIR__ . '/../app/services/SeoGate.php';
+require_once __DIR__ . '/../app/services/IndexNow.php';
 
 Env::load();
 
@@ -243,6 +248,30 @@ if ($action === 'migrate') {
     } catch (Throwable $e) {
         $error = "Erro ao recalcular a quantidade mínima: " . $e->getMessage();
     }
+} elseif ($action === 'seo') {
+    // Migração do pacote de SEO (aditiva, idempotente) + primeira avaliação do
+    // portão de qualidade. Roda sozinha no 1º acesso ao site após o deploy;
+    // este botão serve para forçar/conferir e ver o resumo.
+    @set_time_limit(300);
+    try {
+        if (!Database::connection()->query("SHOW TABLES LIKE 'produtos'")->fetch()) {
+            throw new Exception("Tabela 'produtos' não existe. Execute a Migração (passo 1) primeiro.");
+        }
+        $r = SeoMigration::executar();
+        $g = SeoGate::reavaliarCatalogo(Database::connection());
+        $gargalos = [];
+        foreach (array_slice($g['motivos'], 0, 4, true) as $m => $q) {
+            $gargalos[] = "{$m}: {$q}";
+        }
+        $message = sprintf(
+            'SEO pronto. Migração: %d colunas, %d tabelas, %d categorias normalizadas, %d slugs gerados. Portão de qualidade (modo %s): %d de %d produtos aprovados. Gargalos: %s. Chave IndexNow publicada em /%s.txt',
+            $r['colunas'], $r['tabelas'], $r['categorias_normalizadas'], $r['slugs'],
+            Seo::portaoAtivo() ? 'ATIVO' : 'relatório', $g['indexaveis'], $g['avaliados'],
+            $gargalos ? implode(' · ', $gargalos) : 'nenhum', IndexNow::chave()
+        );
+    } catch (Throwable $e) {
+        $error = 'Erro na migração de SEO: ' . $e->getMessage();
+    }
 } elseif ($action === 'testar-ia') {
     // Diagnóstico: testa se ESTE servidor consegue falar com o Gemini usando a
     // GEMINI_API_KEY do .env de produção. Não altera nada. Se falhar, a Sophia
@@ -422,6 +451,7 @@ if ($action === 'migrate') {
         <a href="?action=seed" class="btn btn-outline">Alternativa: popular com 6 itens de teste</a>
         <a href="?action=reindex" class="btn btn-outline">Reparar índice de busca (incluir tags) — sem apagar dados</a>
         <a href="?action=qtd-minima" class="btn btn-outline">📦 Recalcular quantidade mínima por faixa de preço — sem apagar dados</a>
+        <a href="?action=seo" class="btn btn-outline">🔎 Migração de SEO (slugs, categorias, portão de qualidade) — sem apagar dados</a>
         <a href="?action=testar-ia" class="btn btn-outline">🤖 Testar conexão da IA (Gemini) — diagnostica a Sophia</a>
         <a href="/" class="btn btn-outline">Ir para o Site Inicial</a>
 

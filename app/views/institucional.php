@@ -77,5 +77,7 @@ $c = $conteudos[$pagina] ?? $conteudos['sobre'];
             </a>
             <p class="text-[9px] text-slate-400 mt-2 font-medium">Resposta rápida em horário comercial. Projetos sob medida.</p>
         </div>
+        <?php partial('faq', ['faq' => $faq ?? [], 'titulo' => 'Perguntas frequentes sobre a Novare Brindes']); ?>
+
     </section>
 </div>

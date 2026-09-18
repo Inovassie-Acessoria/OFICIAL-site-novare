@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 /**
  * Front controller — roteia todas as requisições do site.
+ *
+ * Mapa de URLs (ver Seo.php para a geração):
+ *   /                                   home
+ *   /brindes                            hub do catálogo
+ *   /brindes/{categoria}                categoria
+ *   /brindes/{categoria}/material/{m}   faceta (promovida = indexável; livre = noindex)
+ *   /brindes/produto/{slug}             produto
+ *   /{ocasiao}                          landing de ocasião (tabela seo_ocasioes)
+ *   /produto/{sku}, /catalogo           LEGADO -> 301
  */
 
 require_once __DIR__ . '/../app/bootstrap.php';
@@ -14,25 +23,59 @@ header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$pathBruto = $path;
 $path = '/' . trim(rawurldecode($path), '/');
+
+// ------------------------------------------------------------
+// Host canônico + sem barra final (301). Camada em PHP garante o
+// comportamento mesmo que o .htaccess não seja processado.
+// ------------------------------------------------------------
+$hostAtual = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+$ehLocal   = $hostAtual === '' || str_starts_with($hostAtual, 'localhost') || str_starts_with($hostAtual, '127.0.0.1')
+          || Env::get('APP_ENV', 'production') === 'local';
+if (!$ehLocal && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    $hostCanonico = strtolower((string) parse_url(Seo::host(), PHP_URL_HOST));
+    $precisaRedirect = false;
+    $novoHost = $hostAtual;
+    if ($hostCanonico !== '' && $hostAtual !== $hostCanonico && preg_replace('/^www\./', '', $hostAtual) === preg_replace('/^www\./', '', $hostCanonico)) {
+        $novoHost = $hostCanonico;
+        $precisaRedirect = true;
+    }
+    $novoPath = $pathBruto;
+    if ($pathBruto !== '/' && str_ends_with($pathBruto, '/')) {
+        $novoPath = rtrim($pathBruto, '/');
+        $precisaRedirect = true;
+    }
+    if ($precisaRedirect) {
+        $qs = (string) ($_SERVER['QUERY_STRING'] ?? '');
+        header('Location: https://' . $novoHost . $novoPath . ($qs !== '' ? '?' . $qs : ''), true, 301);
+        exit;
+    }
+}
+
+// Schema/dados do pacote de SEO: cria o que falta no 1º request após o deploy.
+SeoMigration::garantir();
 
 $controller = new CatalogController();
 
 try {
     switch (true) {
-        // ---- SEO Técnico (Sitemap e Robots) ----
+        // ---- SEO técnico ----
         case $path === '/sitemap.xml':
-            require_once __DIR__ . '/../app/services/SitemapGenerator.php';
-            SitemapGenerator::render();
+            SitemapGenerator::indice();
             break;
-
-        case $path === '/robots.txt':
+        case (bool) preg_match('#^/sitemap-([a-z]+)(?:-(\d+))?\.xml$#', $path, $m):
+            SitemapGenerator::filho($m[1], (int) ($m[2] ?? 1));
+            break;
+        case $path === '/llms.txt':
+            SitemapGenerator::llms();
+            break;
+        case (bool) preg_match('#^/([a-f0-9]{32})\.txt$#', $path, $m) && IndexNow::chaveValida($m[1]):
             header('Content-Type: text/plain; charset=utf-8');
-            echo "User-agent: *\n";
-            echo "Disallow: /settings-admin/\n";
-            echo "Disallow: /settings-admin\n";
-            echo "Allow: /\n\n";
-            echo "Sitemap: " . urlAbsoluta('/sitemap.xml') . "\n";
+            echo $m[1];
+            break;
+        case (bool) preg_match('#^/media/logo\.(png|jpg|webp|svg|gif)$#', $path):
+            SiteContent::servirLogo();
             break;
 
         // ---- Painel oculto /settings-admin (sem links no site) ----
@@ -54,21 +97,41 @@ try {
         case $path === '/settings-admin/sku':
             (new AdminController())->sku();
             break;
+        case $path === '/settings-admin/seo':
+            (new AdminController())->seo();
+            break;
 
+        // ---- Site ----
         case $path === '/' || $path === '':
             $controller->home();
             break;
 
-        case $path === '/catalogo':
-            $controller->catalogo();
+        case $path === '/brindes':
+            $controller->hub();
+            break;
+
+        case (bool) preg_match('#^/brindes/produto/([a-z0-9][a-z0-9-]*)$#', $path, $m):
+            $controller->produto($m[1]);
+            break;
+
+        case (bool) preg_match('#^/brindes/([a-z0-9-]+)/(material)/([a-z0-9-]+)$#', $path, $m):
+            $controller->faceta($m[1], $m[2], $m[3]);
+            break;
+
+        case (bool) preg_match('#^/brindes/([a-z0-9-]+)$#', $path, $m):
+            $controller->categoria($m[1]);
             break;
 
         case $path === '/busca':
             $controller->busca();
             break;
 
+        // ---- Legado (301) ----
+        case $path === '/catalogo':
+            $controller->catalogoLegado();
+            break;
         case (bool) preg_match('#^/produto/(.+)$#', $path, $m):
-            $controller->produto(trim($m[1]));
+            $controller->produtoLegado(trim($m[1]));
             break;
 
         case in_array($path, ['/sobre', '/atendimento', '/fidelidade'], true):
@@ -80,6 +143,10 @@ try {
             break;
 
         default:
+            // landing de ocasião /{slug}; senão 404 (que ainda consulta a tabela seo_redirects)
+            if (preg_match('#^/([a-z0-9][a-z0-9-]{2,})$#', $path, $m) && $controller->ocasiao($m[1])) {
+                break;
+            }
             $controller->erro404();
     }
 } catch (Throwable $e) {

@@ -1,0 +1,31 @@
+/* ============================================================
+   Novare Brindes — fonte do CSS estático (Tailwind)
+   Build: npm run css  ->  public/assets/css/app.css
+   ============================================================ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body { font-family: 'Inter', sans-serif; background-color: #f9f9fc; color: #1a1c1e; }
+}
+
+@layer components {
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .glass-nav { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+    .primary-gradient { background: linear-gradient(135deg, #006590 0%, #24a1e0 100%); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Galeria da página de produto (thumbs geradas via JS) */
+    #gallery-thumbs button {
+        width: 64px; height: 64px; border: 1px solid #eeeef0; border-radius: 8px;
+        padding: 4px; background: #fff; cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+    }
+    #gallery-thumbs button:hover { border-color: #006590; }
+    #gallery-thumbs button.active { border-color: #006590; box-shadow: 0 0 0 2px rgba(0, 101, 144, 0.2); }
+    #gallery-thumbs button img { width: 100%; height: 100%; object-fit: contain; }
+
+    /* <details> do FAQ: esconde o marcador nativo */
+    details > summary::-webkit-details-marker { display: none; }
+}

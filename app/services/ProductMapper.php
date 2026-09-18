@@ -118,6 +118,17 @@ final class ProductMapper
         return strtr($texto, $mapa);
     }
 
+    public const CATEGORIA_PADRAO = 'Diversos';
+
+    /**
+     * Nomes de categoria que o mapper pode gerar (fonte da tabela `categorias`).
+     * @return string[]
+     */
+    public static function categoriasConhecidas(): array
+    {
+        return array_merge(array_keys(self::CATEGORIAS), [self::CATEGORIA_PADRAO]);
+    }
+
     public static function categoria(string $nome): string
     {
         $n = self::normalizar($nome);

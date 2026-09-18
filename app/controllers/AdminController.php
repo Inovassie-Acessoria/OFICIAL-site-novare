@@ -143,6 +143,212 @@ final class AdminController
         $this->redirect('/settings-admin#' . rawurlencode($secao));
     }
 
+    /* ============================ SEO ============================ */
+
+    /**
+     * GET|POST /settings-admin/seo — painel de SEO: portão de qualidade, dados
+     * operacionais, entidade, conteúdo próprio por produto/categoria, FAQ,
+     * landings de ocasião, facetas promovidas, redirects, IndexNow e imagens locais.
+     */
+    public function seo(): void
+    {
+        $this->exigirLogin();
+        $pdo = Database::connection();
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            if (!AdminAuth::csrfValido($_POST['csrf'] ?? null)) {
+                $this->redirect('/settings-admin/seo');
+            }
+            $msg = $this->seoAcao($pdo, (string) ($_POST['acao'] ?? ''));
+            Cache::flush();
+            Seo::limparCacheCategorias();
+            $this->flash($msg);
+            $volta = (string) ($_POST['volta'] ?? '');
+            $this->redirect('/settings-admin/seo' . ($volta !== '' ? '?' . ltrim($volta, '?') : '') . '#' . rawurlencode((string) ($_POST['ancora'] ?? '')));
+        }
+
+        // ---- produto em edição (busca por SKU)
+        $produto = null;
+        $skuBusca = trim((string) q('sku', ''));
+        if ($skuBusca !== '') {
+            $st = $pdo->prepare('SELECT * FROM produtos WHERE sku_pai = :s1 OR slug = :s2 LIMIT 1');
+            $st->execute([':s1' => $skuBusca, ':s2' => $skuBusca]);
+            $produto = $st->fetch() ?: null;
+            if ($produto) {
+                $st = $pdo->prepare("SELECT COUNT(*) FROM imagens i JOIN variacoes v ON v.id = i.variacao_id WHERE v.produto_id = :id AND v.ativo = 1");
+                $st->execute([':id' => $produto['id']]);
+                $produto['imagens'] = (int) $st->fetchColumn();
+                $produto['avaliacao'] = SeoGate::avaliarProduto($produto);
+            }
+        }
+
+        $stats = Settings::get('seo_portao_stats', null);
+        $this->render('seo', [
+            'flash'        => $this->consumirFlash(),
+            'portao_ativo' => Seo::portaoAtivo(),
+            'stats'        => is_array($stats) ? $stats : null,
+            'operacional'  => (array) (Settings::get('seo_operacional', []) ?: []),
+            'entidade'     => (array) (Settings::get('seo_entidade', []) ?: []),
+            'produto'      => $produto,
+            'sku_busca'    => $skuBusca,
+            'categorias'   => $pdo->query('SELECT c.*, (SELECT COUNT(*) FROM produtos p WHERE p.categoria = c.nome AND p.ativo = 1) AS total FROM categorias c ORDER BY c.ordem, c.nome')->fetchAll(),
+            'faqs'         => $pdo->query('SELECT * FROM seo_faq ORDER BY entidade, entidade_id, ordem, id')->fetchAll(),
+            'ocasioes'     => $pdo->query('SELECT * FROM seo_ocasioes ORDER BY id')->fetchAll(),
+            'facetas'      => $pdo->query('SELECT * FROM seo_facetas ORDER BY categoria_slug, valor_label')->fetchAll(),
+            'redirects'    => $pdo->query('SELECT * FROM seo_redirects ORDER BY id DESC LIMIT 200')->fetchAll(),
+            'materiais'    => $pdo->query("SELECT material, COUNT(*) n FROM produtos WHERE ativo = 1 AND material IS NOT NULL AND material <> '' GROUP BY material ORDER BY n DESC")->fetchAll(),
+            'indexnow_key' => IndexNow::chave(),
+            'indexnow_ultimo' => Settings::get('indexnow_ultimo', null),
+            'imagens'      => ImagemLocal::status($pdo) + ['gd' => ImagemLocal::disponivel()],
+        ]);
+    }
+
+    private function seoAcao(PDO $pdo, string $acao): string
+    {
+        $t = static fn (string $k, int $max = 65535): ?string => (($v = trim((string) ($_POST[$k] ?? ''))) === '') ? null : mb_substr($v, 0, $max);
+
+        switch ($acao) {
+            case 'portao':
+                Settings::set('seo_portao_ativo', !empty($_POST['ativo']));
+                return 'Portão de qualidade ' . (!empty($_POST['ativo']) ? 'ATIVADO: só produtos aprovados ficam indexáveis.' : 'desativado: todos os produtos com imagem seguem indexáveis (modo relatório).');
+
+            case 'reavaliar':
+                $s = SeoGate::reavaliarCatalogo($pdo);
+                return sprintf('Portão reavaliado: %d de %d produtos aprovados.', $s['indexaveis'], $s['avaliados']);
+
+            case 'operacional':
+                Settings::set('seo_operacional', ['prazo' => $t('prazo', 40), 'tecnicas' => $t('tecnicas', 255), 'area' => $t('area', 120)]);
+                return 'Dados operacionais globais salvos.';
+
+            case 'entidade':
+                Settings::set('seo_entidade', [
+                    'razao_social' => $t('razao_social', 190), 'cnpj' => $t('cnpj', 30), 'endereco' => $t('endereco', 190),
+                    'cidade' => $t('cidade', 90), 'uf' => $t('uf', 2), 'cep' => $t('cep', 12), 'perfis' => $t('perfis', 2000),
+                ]);
+                return 'Dados da empresa salvos.';
+
+            case 'produto':
+                $id = (int) ($_POST['id'] ?? 0);
+                $st = $pdo->prepare(
+                    'UPDATE produtos SET descricao_propria = :dp, seo_title = :st, seo_description = :sd,
+                        prazo_producao = :pr, tecnicas_personalizacao = :tc, area_impressao = :ar,
+                        conteudo_alterado_em = NOW()
+                     WHERE id = :id'
+                );
+                $st->execute([
+                    ':dp' => $t('descricao_propria'), ':st' => $t('seo_title', 70), ':sd' => $t('seo_description', 180),
+                    ':pr' => $t('prazo_producao', 40), ':tc' => $t('tecnicas_personalizacao', 255), ':ar' => $t('area_impressao', 120), ':id' => $id,
+                ]);
+                // reavalia só este produto
+                $p = $pdo->query("SELECT p.*, (SELECT COUNT(*) FROM imagens i JOIN variacoes v ON v.id = i.variacao_id WHERE v.produto_id = p.id AND v.ativo = 1) AS imagens FROM produtos p WHERE p.id = {$id}")->fetch();
+                if ($p) {
+                    $a = SeoGate::avaliarProduto($p);
+                    $pdo->prepare('UPDATE produtos SET seo_indexavel = :i, seo_motivo = :m, seo_avaliado_em = NOW() WHERE id = :id')
+                        ->execute([':i' => (int) $a['indexavel'], ':m' => $a['motivo'] ?: null, ':id' => $id]);
+                    $this->indexNowUrl(Seo::canonical(Seo::urlProduto($p)));
+                    return 'Produto salvo. Portão: ' . ($a['indexavel'] ? 'APROVADO' : 'reprovado (' . $a['motivo'] . ')');
+                }
+                return 'Produto salvo.';
+
+            case 'categoria':
+                $st = $pdo->prepare('UPDATE categorias SET intro_seo = :i, seo_title = :t, seo_description = :d, rotulo_seo = :r, seo_indexavel = :x WHERE id = :id');
+                $st->execute([':i' => $t('intro_seo'), ':t' => $t('seo_title', 70), ':d' => $t('seo_description', 180), ':r' => $t('rotulo_seo', 120), ':x' => !empty($_POST['seo_indexavel']) ? 1 : 0, ':id' => (int) ($_POST['id'] ?? 0)]);
+                return 'Categoria salva.';
+
+            case 'faq_add':
+                $ent = (string) ($_POST['entidade'] ?? 'global');
+                if (!in_array($ent, ['produto', 'categoria', 'faceta', 'ocasiao', 'global'], true)) {
+                    return 'Entidade inválida.';
+                }
+                $pergunta = $t('pergunta', 255);
+                $resposta = $t('resposta');
+                if (!$pergunta || !$resposta) {
+                    return 'Pergunta e resposta são obrigatórias.';
+                }
+                $pdo->prepare('INSERT INTO seo_faq (entidade, entidade_id, pergunta, resposta, ordem) VALUES (:e, :i, :p, :r, :o)')
+                    ->execute([':e' => $ent, ':i' => $ent === 'global' ? null : $t('entidade_id', 190), ':p' => $pergunta, ':r' => $resposta, ':o' => (int) ($_POST['ordem'] ?? 0)]);
+                return 'Pergunta adicionada.';
+
+            case 'faq_del':
+                $pdo->prepare('DELETE FROM seo_faq WHERE id = :id')->execute([':id' => (int) ($_POST['id'] ?? 0)]);
+                return 'Pergunta removida.';
+
+            case 'ocasiao_salvar':
+                $slug = Seo::slugify((string) ($_POST['slug'] ?? $_POST['titulo'] ?? ''));
+                if ($slug === '' || $slug === 'item' || in_array($slug, ['brindes', 'busca', 'sobre', 'atendimento', 'fidelidade', 'status', 'catalogo', 'produto'], true)) {
+                    return 'Slug inválido ou reservado.';
+                }
+                $id = (int) ($_POST['id'] ?? 0);
+                $dados = [
+                    ':slug' => $slug, ':titulo' => $t('titulo', 190) ?? $slug, ':h1' => $t('h1', 190) ?? ($t('titulo', 190) ?? $slug),
+                    ':st' => $t('seo_title', 70), ':sd' => $t('seo_description', 180), ':intro' => $t('intro') ?? '', ':corpo' => $t('corpo'),
+                    ':skus' => $t('produtos_skus', 5000), ':cats' => $t('categorias', 500), ':idx' => !empty($_POST['seo_indexavel']) ? 1 : 0,
+                ];
+                if ($id > 0) {
+                    $dados[':id'] = $id;
+                    $pdo->prepare('UPDATE seo_ocasioes SET slug=:slug, titulo=:titulo, h1=:h1, seo_title=:st, seo_description=:sd, intro=:intro, corpo=:corpo, produtos_skus=:skus, categorias=:cats, seo_indexavel=:idx WHERE id=:id')->execute($dados);
+                } else {
+                    $pdo->prepare('INSERT INTO seo_ocasioes (slug, titulo, h1, seo_title, seo_description, intro, corpo, produtos_skus, categorias, seo_indexavel) VALUES (:slug,:titulo,:h1,:st,:sd,:intro,:corpo,:skus,:cats,:idx)')->execute($dados);
+                }
+                $this->indexNowUrl(Seo::canonical(Seo::urlOcasiao($slug)));
+                return 'Landing "' . $slug . '" salva.';
+
+            case 'ocasiao_del':
+                $pdo->prepare('DELETE FROM seo_ocasioes WHERE id = :id')->execute([':id' => (int) ($_POST['id'] ?? 0)]);
+                return 'Landing removida.';
+
+            case 'faceta_salvar':
+                $catSlug = Seo::slugify((string) ($_POST['categoria_slug'] ?? ''));
+                $valor   = $t('valor', 190);
+                if ($catSlug === '' || !$valor || !Seo::categoriaPorSlug($catSlug)) {
+                    return 'Categoria ou material inválido.';
+                }
+                $pdo->prepare(
+                    'INSERT INTO seo_facetas (categoria_slug, atributo, valor, valor_slug, valor_label, intro_seo, volume_busca, seo_indexavel)
+                     VALUES (:c, "material", :v, :vs, :vl, :i, :vb, :x)
+                     ON DUPLICATE KEY UPDATE valor = VALUES(valor), valor_label = VALUES(valor_label), intro_seo = VALUES(intro_seo), volume_busca = VALUES(volume_busca), seo_indexavel = VALUES(seo_indexavel)'
+                )->execute([':c' => $catSlug, ':v' => $valor, ':vs' => Seo::slugify($valor), ':vl' => $t('valor_label', 190) ?? $valor, ':i' => $t('intro_seo'), ':vb' => (int) ($_POST['volume_busca'] ?? 0) ?: null, ':x' => !empty($_POST['seo_indexavel']) ? 1 : 0]);
+                return 'Faceta salva.';
+
+            case 'faceta_del':
+                $pdo->prepare('DELETE FROM seo_facetas WHERE id = :id')->execute([':id' => (int) ($_POST['id'] ?? 0)]);
+                return 'Faceta removida.';
+
+            case 'redirect_add':
+                $origem = '/' . ltrim((string) parse_url(trim((string) ($_POST['origem'] ?? '')), PHP_URL_PATH), '/');
+                $destino = $t('destino', 255);
+                $status  = (int) ($_POST['status'] ?? 301);
+                if ($origem === '/' || (!$destino && $status !== 410)) {
+                    return 'Informe a origem e o destino (ou marque 410).';
+                }
+                $pdo->prepare('INSERT INTO seo_redirects (origem, destino, status) VALUES (:o, :d, :s) ON DUPLICATE KEY UPDATE destino = VALUES(destino), status = VALUES(status)')
+                    ->execute([':o' => rtrim($origem, '/') ?: '/', ':d' => $status === 410 ? null : $destino, ':s' => in_array($status, [301, 302, 410], true) ? $status : 301]);
+                return 'Redirect salvo.';
+
+            case 'redirect_del':
+                $pdo->prepare('DELETE FROM seo_redirects WHERE id = :id')->execute([':id' => (int) ($_POST['id'] ?? 0)]);
+                return 'Redirect removido.';
+
+            case 'indexnow':
+                $r = IndexNow::enviarAlteracoes($pdo, date('Y-m-d H:i:s', strtotime('-7 days')));
+                return 'IndexNow: ' . json_encode($r, JSON_UNESCAPED_UNICODE);
+
+            case 'imagens':
+                @set_time_limit(120);
+                $r = ImagemLocal::processar($pdo, 40);
+                return sprintf('Imagens: %d convertidas, %d com erro, %d restantes. %s', $r['processadas'], $r['erros'], $r['restantes'], implode(' ', $r['mensagens']));
+        }
+        return 'Nada para salvar.';
+    }
+
+    private function indexNowUrl(string $url): void
+    {
+        try {
+            IndexNow::enviar([$url]);
+        } catch (Throwable $e) {
+        }
+    }
+
     /** POST /settings-admin/upload — upload AJAX (imagem ou arquivo da IA). JSON. */
     public function upload(): void
     {

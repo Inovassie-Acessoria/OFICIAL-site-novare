@@ -1,0 +1,95 @@
+# ============================================================
+# novarebrindes.com.br
+#
+#  - libera o catálogo inteiro para busca
+#  - impede que busca interna, painel, API e parâmetros de
+#    ordenação consumam rastreio que faltaria nas páginas boas
+#  - libera explicitamente os crawlers de IA (GEO)
+#
+# ATENÇÃO: Disallow impede RASTREIO, não indexação. Filtros de
+# material/cor/eco NÃO estão bloqueados de propósito: eles saem do
+# índice via meta noindex,follow — e para o Google ler o noindex a
+# página precisa poder ser rastreada.
+# ============================================================
+
+User-agent: *
+Allow: /
+
+# Busca interna, painel, API e utilitários: nunca devem gastar rastreio
+Disallow: /busca
+Disallow: /settings-admin
+Disallow: /api/
+Disallow: /status
+Disallow: /migrate-web.php
+Disallow: /router-test.php
+
+# Parâmetros que não mudam o conjunto de produtos de forma relevante
+Disallow: /*?*ordenar=
+Disallow: /*?*preco_min=
+Disallow: /*?*preco_max=
+Disallow: /*?*quantidade_minima=
+Disallow: /*?*utm_
+Disallow: /*?*gclid=
+Disallow: /*?*fbclid=
+
+# NUNCA bloqueie CSS, JS ou imagem: o Google precisa renderizar
+Allow: /assets/
+Allow: /media/
+Allow: /*.css$
+Allow: /*.js$
+Allow: /*.webp$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.svg$
+
+# ============================================================
+# CRAWLERS DE IA (GEO)
+# ============================================================
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+# Bots de SEO de terceiros: hospedagem compartilhada, economiza banda
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Disallow: /
+
+Sitemap: https://novarebrindes.com.br/sitemap.xml

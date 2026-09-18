@@ -34,12 +34,78 @@ final class SiteContent
             // Compatibilidade com logos antigos salvos como arquivo sob /assets/. Se o
             // arquivo não existir mais (removido em um deploy/limpeza), usa o empacotado
             // em vez de quebrar e cair no fallback — era o que causava o "logo sumindo".
-            if (str_starts_with($v, '/assets/') && !is_file(APP_ROOT . '/public' . $v)) {
+            if (str_starts_with($v, '/assets/') && !is_file((defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__, 2)) . '/public' . $v)) {
                 return self::LOGO_PADRAO;
             }
             return $v;
         }
         return self::LOGO_PADRAO;
+    }
+
+    /**
+     * URL do logo para o <img> das páginas públicas.
+     *
+     * O logo salvo pelo painel vive no banco como data URI (base64) — isso o
+     * protege de deploys/limpezas, mas embutido direto no HTML ele pesava
+     * ~395 KB e aparecia DUAS vezes por página (header + footer): 790 KB de
+     * HTML em cada uma das ~3.500 URLs. Aqui ele vira uma URL estável
+     * (/media/logo.png?v=hash) servida por SiteContent::servirLogo() com
+     * cache de 1 ano — baixa uma vez, reaproveita em todas as páginas.
+     */
+    public static function logoUrl(): string
+    {
+        $v = self::logo();
+        if (!str_starts_with($v, 'data:image/')) {
+            return $v;
+        }
+        $ext = self::logoDataInfo($v)['ext'];
+        return '/media/logo.' . $ext . '?v=' . substr(md5($v), 0, 10);
+    }
+
+    /** @return array{mime:string,ext:string,bin:string} */
+    private static function logoDataInfo(string $dataUri): array
+    {
+        $mime = 'image/png';
+        $bin  = '';
+        if (preg_match('#^data:(image/[a-z0-9.+-]+);base64,(.+)$#is', $dataUri, $m)) {
+            $mime = strtolower($m[1]);
+            $bin  = (string) base64_decode($m[2], true);
+        }
+        $ext = match ($mime) {
+            'image/jpeg', 'image/jpg' => 'jpg',
+            'image/webp' => 'webp',
+            'image/svg+xml' => 'svg',
+            'image/gif' => 'gif',
+            default => 'png',
+        };
+        return ['mime' => $mime, 'ext' => $ext, 'bin' => $bin];
+    }
+
+    /** GET /media/logo.{ext} — entrega o logo do banco como arquivo cacheável. */
+    public static function servirLogo(): void
+    {
+        $v = self::logo();
+        if (!str_starts_with($v, 'data:image/')) {
+            // logo é um arquivo real: redireciona (o Apache serve com cache)
+            header('Location: ' . $v, true, 302);
+            return;
+        }
+        $info = self::logoDataInfo($v);
+        if ($info['bin'] === '') {
+            http_response_code(404);
+            return;
+        }
+        $etag = '"' . md5($info['bin']) . '"';
+        header('Content-Type: ' . $info['mime']);
+        header('Cache-Control: public, max-age=31536000, immutable');
+        header('ETag: ' . $etag);
+        header('X-Content-Type-Options: nosniff');
+        if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? '') === $etag) {
+            http_response_code(304);
+            return;
+        }
+        header('Content-Length: ' . strlen($info['bin']));
+        echo $info['bin'];
     }
 
     /** As 7 categorias da seção "Navegue pelas categorias" (rótulos fixos). */
@@ -58,8 +124,8 @@ final class SiteContent
      * valores gravados no banco. Este método traduz para o filtro correto.
      */
     private const CATEGORIA_ALIASES = [
-        'CANETAS'             => 'ESCRITA',
-        'MOLESKINE & CADERNOS' => 'CADERNOS E AGENDAS',
+        'CANETAS'             => 'Canetas',
+        'MOLESKINE & CADERNOS' => 'Moleskine & Cadernos',
     ];
 
     /**
@@ -107,7 +173,7 @@ final class SiteContent
                 'titulo'    => 'Praticidade corporativa de alto padrão',
                 'subtitulo' => 'Mochilas executivas ergonômicas e malas de viagem personalizadas. O brinde ideal para acompanhar seu time em convenções, visitas e viagens de negócios.',
                 'cta_texto' => 'Ver Mochilas',
-                'cta_link'  => '/catalogo?categoria=BOLSAS E MOCHILAS',
+                'cta_link'  => '/brindes/bolsas-e-mochilas',
             ],
             [
                 'imagem'    => '/assets/images/banner_canetas.png',
@@ -115,7 +181,7 @@ final class SiteContent
                 'titulo'    => 'A assinatura do sucesso da sua marca',
                 'subtitulo' => 'Canetas metálicas sofisticadas, lapiseiras e conjuntos executivos em estojos especiais. Brindes marcantes que transmitem precisão e profissionalismo.',
                 'cta_texto' => 'Ver Canetas',
-                'cta_link'  => '/catalogo?categoria=ESCRITA',
+                'cta_link'  => '/brindes/canetas',
             ],
             [
                 'imagem'    => '/assets/images/banner_garrafas.png',
@@ -123,7 +189,7 @@ final class SiteContent
                 'titulo'    => 'Sua marca presente no dia a dia',
                 'subtitulo' => 'Squeezes de inox e garrafas térmicas com parede dupla a vácuo. Design moderno e eficiência térmica que promovem a saúde e a sustentabilidade no escritório.',
                 'cta_texto' => 'Ver Garrafas',
-                'cta_link'  => '/catalogo?categoria=GARRAFAS E SQUEEZES',
+                'cta_link'  => '/brindes/garrafas-e-squeezes',
             ],
             [
                 'imagem'    => '/assets/images/banner_onboarding.png',
@@ -131,7 +197,7 @@ final class SiteContent
                 'titulo'    => 'Acolhimento marcante desde o dia um',
                 'subtitulo' => 'Kits onboarding de boas-vindas completos com caixas personalizadas. Garanta que novos colaboradores e parceiros sintam-se especiais e motivados.',
                 'cta_texto' => 'Ver Kits Onboarding',
-                'cta_link'  => '/catalogo?categoria=KITS E CONJUNTOS',
+                'cta_link'  => '/brindes/kits-e-conjuntos',
             ],
             [
                 'imagem'    => '/assets/images/banner_moleskine.png',
@@ -139,7 +205,7 @@ final class SiteContent
                 'titulo'    => 'Ideias e planejamentos registrados com elegância',
                 'subtitulo' => 'Cadernos estilo moleskine com capa de couro, pauta inteligente e fita marcadora. Presentes executivos que transmitem requinte e sofisticação.',
                 'cta_texto' => 'Ver Moleskines',
-                'cta_link'  => '/catalogo?categoria=CADERNOS E AGENDAS',
+                'cta_link'  => '/brindes/cadernos-e-moleskines',
             ],
         ];
     }

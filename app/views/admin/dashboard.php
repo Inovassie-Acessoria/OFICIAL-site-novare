@@ -51,6 +51,7 @@ foreach ($tops as $chave => $info) {
         <a href="#top_cadernos" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300">Top Cadernos</a>
         <a href="#top_garrafas" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300">Top Garrafas</a>
         <a href="#top_mochilas" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300">Top Mochilas</a>
+        <a href="/settings-admin/seo" class="px-3 py-1.5 rounded-full bg-sky-700 hover:bg-sky-600 text-white flex items-center gap-1"><span class="material-symbols-outlined text-xs">travel_explore</span> SEO</a>
     </nav>
 
     <!-- ============ 1) LOGO ============ -->

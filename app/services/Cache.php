@@ -80,6 +80,12 @@ final class Cache
         );
     }
 
+    /** Remove uma chave específica. */
+    public static function forget(string $key): void
+    {
+        @unlink(self::path($key));
+    }
+
     /** Remove todo o cache (chamado pela sync). */
     public static function flush(): void
     {

@@ -466,6 +466,16 @@
             link_url: link.href,
             page_location: window.location.href
         });
+
+        // Evento-chave de conversão (GA4: marcar como key event; dimensão item_id).
+        // Sem ele não existe forma de provar retorno de SEO em lead.
+        if (link.dataset.evento === 'orcamento_whatsapp') {
+            pushEvent('orcamento_whatsapp', {
+                item_id: link.dataset.sku || prodSku || '',
+                item_name: prodName || '',
+                page_location: window.location.href
+            });
+        }
     });
 
     /* ---------- Formulário de Newsletter (Envio Assíncrono com Feedback Verde) ---------- */

@@ -1,9 +1,12 @@
 <?php
 /**
- * @var string $conteudo
- * @var string $titulo
+ * Layout padrão. Cabeçalho ÚNICO de SEO: nenhuma view monta <head> sozinha.
+ *
+ * @var string     $conteudo
+ * @var string     $titulo   título SEM marca (Seo::title aplica " | Novare Brindes")
  * @var array|null $categorias
- * @var array|null $meta
+ * @var array|null $meta     description, canonical, indexavel, og_image, og_type,
+ *                           breadcrumbs[], schemas[], faq[], preload_image
  */
 $cats = $categorias ?? [];
 if (!$cats) {
@@ -13,164 +16,67 @@ if (!$cats) {
         $cats = [];
     }
 }
-// Logo gerenciável pelo painel admin (cai no padrão se não configurado).
-$logoUrl = SiteContent::logo();
+$logoUrl = SiteContent::logoUrl();
+$meta    = $meta ?? [];
 
-// Inicialização segura de metadados dinâmicos para SEO técnico
-$meta = $meta ?? [];
-$metaDesc = $meta['description'] ?? 'Brindes corporativos personalizados para eventos, feiras e kits de onboarding. Atendimento de alta excelência e inteligência de marca.';
-$metaKeywords = $meta['keywords'] ?? 'brindes personalizados, brindes corporativos, canetas personalizadas, kit onboarding, novare brindes';
-$canonicalUrl = $meta['canonical'] ?? urlAbsoluta(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
-$robotsMeta = $meta['robots'] ?? 'index, follow';
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$ehHome      = $requestPath === '/';
 
-// Configurações de Open Graph (Redes sociais, WhatsApp, etc.)
-$ogTitle = $meta['og_title'] ?? ($titulo ?? 'Novare Brindes Corporativos');
-$ogDesc = $meta['og_description'] ?? $metaDesc;
-$ogImg = $meta['og_image'] ?? urlAbsoluta('/assets/images/logo-novare.png');
-if (!empty($ogImg) && !str_starts_with($ogImg, 'http')) {
+$tituloFinal = Seo::title((string) ($titulo ?? ''));
+$metaDesc    = Seo::description((string) ($meta['description'] ?? 'Brindes corporativos personalizados com a logo da sua empresa. Orçamento rápido pelo WhatsApp e entrega para todo o Brasil.'));
+$canonicalUrl = (string) ($meta['canonical'] ?? Seo::canonical($requestPath));
+$indexavel   = array_key_exists('indexavel', $meta) ? (bool) $meta['indexavel'] : true;
+$robotsMeta  = $indexavel
+    ? 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'
+    : 'noindex,follow';
+
+// Open Graph (WhatsApp/LinkedIn: no B2B é o canal principal de compartilhamento)
+$ogTitle = (string) ($meta['og_title'] ?? $tituloFinal);
+$ogDesc  = (string) ($meta['og_description'] ?? $metaDesc);
+$ogImg   = (string) ($meta['og_image'] ?? '') ?: SiteContent::LOGO_PADRAO;
+if (!str_starts_with($ogImg, 'http')) {
     $ogImg = urlAbsoluta($ogImg);
 }
-$ogUrl = $meta['og_url'] ?? $canonicalUrl;
+$ogType  = ($meta['og_type'] ?? 'website') === 'product' ? 'product' : 'website';
 
-// Geração dinâmica de Schemas Structured Data (JSON-LD) para GEO, AEO e Sitelinks
+// JSON-LD: Organization/WebSite só na home (consolida a entidade), Breadcrumb
+// em toda interna, e o que o controller mandar (Product, ItemList, FAQ).
 $schemas = [];
-
-// 1. WebSite Schema com Sitelinks Searchbox (Somente Home)
-$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-if ($requestPath === '/' && empty(q('categoria')) && empty(q('sustentavel'))) {
-    $schemas[] = [
-        '@context' => 'https://schema.org',
-        '@type' => 'WebSite',
-        'name' => 'Novare Brindes',
-        'url' => urlAbsoluta('/'),
-        'potentialAction' => [
-            '@type' => 'SearchAction',
-            'target' => urlAbsoluta('/busca?q={search_term_string}'),
-            'query-input' => 'required name=search_term_string'
-        ]
-    ];
+if ($ehHome) {
+    $schemas[] = Seo::schemaOrganization();
 }
-
-// 2. Organization Schema
-$schemas[] = [
-    '@context' => 'https://schema.org',
-    '@type' => 'Organization',
-    'name' => 'Novare Brindes',
-    'url' => urlAbsoluta('/'),
-    // O logo do schema precisa ser uma URL pública e rastreável pelo Google. Se o
-    // logo do painel for um data URI (embutido no banco), usa o arquivo empacotado.
-    'logo' => urlAbsoluta((!$logoUrl || str_starts_with($logoUrl, 'data:')) ? '/assets/images/logo-novare.png' : $logoUrl),
-    'contactPoint' => [
-        '@type' => 'ContactPoint',
-        'telephone' => '+' . whatsappNumero(),
-        'contactType' => 'sales',
-        'areaServed' => 'BR',
-        'availableLanguage' => 'Portuguese'
-    ]
-];
-
-// 3. BreadcrumbList Schema
-if (isset($meta['breadcrumbs']) && is_array($meta['breadcrumbs'])) {
-    $itemListElement = [];
-    foreach ($meta['breadcrumbs'] as $idx => $bc) {
-        $itemListElement[] = [
-            '@type' => 'ListItem',
-            'position' => $idx + 1,
-            'name' => $bc['name'],
-            'item' => $bc['url']
-        ];
+if (!empty($meta['breadcrumbs']) && is_array($meta['breadcrumbs'])) {
+    $schemas[] = Seo::schemaBreadcrumb($meta['breadcrumbs']);
+}
+foreach ($meta['schemas'] ?? [] as $s) {
+    if ($s) {
+        $schemas[] = $s;
     }
-    $schemas[] = [
-        '@context' => 'https://schema.org',
-        '@type' => 'BreadcrumbList',
-        'itemListElement' => $itemListElement
-    ];
 }
-
-// 4. Product Schema (detalhes do produto)
-if (isset($meta['product_schema']) && is_array($meta['product_schema'])) {
-    $prodSchema = $meta['product_schema'];
-    $prodImg = $prodSchema['imagem'] ?? '';
-    if ($prodImg !== '' && !str_starts_with($prodImg, 'http')) {
-        $prodImg = urlAbsoluta($prodImg);
+if (!empty($meta['faq'])) {
+    $faqSchema = Seo::schemaFaq($meta['faq']);
+    if ($faqSchema) {
+        $schemas[] = $faqSchema;
     }
-    
-    $schemas[] = [
-        '@context' => 'https://schema.org',
-        '@type' => 'Product',
-        'name' => $prodSchema['nome'],
-        'image' => $prodImg,
-        'description' => mb_substr(strip_tags($prodSchema['descricao'] ?? ''), 0, 300),
-        'sku' => $prodSchema['sku'],
-        'mpn' => $prodSchema['sku'],
-        'brand' => [
-            '@type' => 'Brand',
-            'name' => 'Novare Brindes'
-        ],
-        'offers' => [
-            '@type' => 'AggregateOffer',
-            'priceCurrency' => 'BRL',
-            'price' => '0.00',
-            'priceSpecification' => [
-                '@type' => 'PriceSpecification',
-                'price' => '0.00',
-                'priceCurrency' => 'BRL',
-                'valueAddedTaxIncluded' => 'true'
-            ],
-            'availability' => 'https://schema.org/InStock',
-            'seller' => [
-                '@type' => 'Organization',
-                'name' => 'Novare Brindes'
-            ]
-        ]
-    ];
 }
 
-// 5. FAQPage Schema (AEO) - Home e Sobre
-if ($requestPath === '/' || $requestPath === '/sobre') {
-    $schemas[] = [
-        '@context' => 'https://schema.org',
-        '@type' => 'FAQPage',
-        'mainEntity' => [
-            [
-                '@type' => 'Question',
-                'name' => 'Como solicitar um orçamento de brindes corporativos na Novare Brindes?',
-                'acceptedAnswer' => [
-                    '@type' => 'Answer',
-                    'text' => 'Você pode solicitar um orçamento personalizado selecionando os produtos em nosso catálogo online e clicando no botão de orçamento via WhatsApp. Nosso time de especialistas responderá rapidamente com uma cotação sob medida contendo os valores faturados, opções de frete e prazos para a sua empresa.'
-                ]
-            ],
-            [
-                '@type' => 'Question',
-                'name' => 'Qual é a quantidade mínima exigida para a compra de brindes personalizados?',
-                'acceptedAnswer' => [
-                    '@type' => 'Answer',
-                    'text' => 'A quantidade mínima varia de acordo com a categoria do produto (por exemplo, canetas corporativas, squeezes personalizados ou kits de onboarding). A quantidade mínima de cada lote está detalhada na página de especificações do respectivo brinde no catálogo.'
-                ]
-            ],
-            [
-                '@type' => 'Question',
-                'name' => 'Quais são as formas de pagamento disponíveis para empresas?',
-                'acceptedAnswer' => [
-                    '@type' => 'Answer',
-                    'text' => 'Oferecemos opções flexíveis de faturamento corporativo para empresas, incluindo pagamento faturado via Pix com desconto, boleto bancário faturado e cartão de crédito corporativo parcelado.'
-                ]
-            ],
-            [
-                '@type' => 'Question',
-                'name' => 'Vocês entregam brindes personalizados para todo o Brasil?',
-                'acceptedAnswer' => [
-                    '@type' => 'Answer',
-                    'text' => 'Sim, realizamos entregas corporativas monitoradas e seguras para todas as regiões do Brasil. Oferecemos condições de frete grátis dependendo do volume do lote e da região. Consulte nossos consultores comerciais no WhatsApp.'
-                ]
-            ]
-        ]
-    ];
-}
+// CSS compilado (Tailwind estático) com hash de conteúdo para cache de 1 ano
+$cssFile = APP_ROOT . '/public/assets/css/app.css';
+$cssVer  = is_file($cssFile) ? substr(md5_file($cssFile) ?: '', 0, 8) : '1';
+$catAtualSlug = $categoria_atual['slug'] ?? null;
+$entidade = Settings::get('seo_entidade', []);
+$entidade = is_array($entidade) ? $entidade : [];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= e($tituloFinal) ?></title>
+    <meta name="description" content="<?= e($metaDesc) ?>">
+    <meta name="robots" content="<?= e($robotsMeta) ?>">
+    <link rel="canonical" href="<?= e($canonicalUrl) ?>">
+
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -178,128 +84,37 @@ if ($requestPath === '/' || $requestPath === '/sobre') {
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-TWRJXWFJ');</script>
     <!-- End Google Tag Manager -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= e(isset($titulo) ? $titulo . ' | Novare Brindes Corporativos' : 'Novare Brindes Corporativos') ?></title>
-    
-    <!-- Meta tags de indexação -->
-    <meta name="description" content="<?= e($metaDesc) ?>">
-    <meta name="keywords" content="<?= e($metaKeywords) ?>">
-    <meta name="robots" content="<?= e($robotsMeta) ?>">
-    <link rel="canonical" href="<?= e($canonicalUrl) ?>">
 
-    <!-- Tags de Favicon em conformidade com as diretrizes do Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <?php if (!empty($meta['preload_image'])): ?>
+    <link rel="preload" as="image" href="<?= e($meta['preload_image']) ?>" fetchpriority="high">
+    <?php endif; ?>
+    <link rel="stylesheet" href="<?= asset('css/app.css') ?>?v=<?= $cssVer ?>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
     <link rel="shortcut icon" href="<?= url('/favicon.ico') ?>" type="image/x-icon">
     <link rel="icon" href="<?= url('/favicon.png') ?>" type="image/png" sizes="48x48">
-    <link rel="icon" href="<?= url('/assets/images/favicon.png') ?>" type="image/png" sizes="16x16">
-    <link rel="icon" href="<?= url('/assets/images/favicon.png') ?>" type="image/png" sizes="32x32">
-    <link rel="icon" href="<?= url('/assets/images/favicon.png') ?>" type="image/png" sizes="96x96">
-    <link rel="icon" href="<?= url('/assets/images/favicon.png') ?>" type="image/png" sizes="144x144">
     <link rel="apple-touch-icon" href="<?= url('/assets/images/favicon.png') ?>" sizes="180x180">
+    <meta name="theme-color" content="#006590">
 
-    <!-- Open Graph (Facebook / WhatsApp / LinkedIn / Slack) -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="<?= e($ogUrl) ?>">
+    <!-- Open Graph / Twitter -->
+    <meta property="og:type" content="<?= $ogType ?>">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:site_name" content="Novare Brindes">
+    <meta property="og:url" content="<?= e($canonicalUrl) ?>">
     <meta property="og:title" content="<?= e($ogTitle) ?>">
     <meta property="og:description" content="<?= e($ogDesc) ?>">
     <meta property="og:image" content="<?= e($ogImg) ?>">
-
-    <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="<?= e($ogUrl) ?>">
     <meta name="twitter:title" content="<?= e($ogTitle) ?>">
     <meta name="twitter:description" content="<?= e($ogDesc) ?>">
     <meta name="twitter:image" content="<?= e($ogImg) ?>">
 
-    <!-- Schemas Structured Data JSON-LD -->
     <?php foreach ($schemas as $s): ?>
-        <script type="application/ld+json">
-            <?= json_encode($s, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
-        </script>
+    <script type="application/ld+json"><?= json_encode($s, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
     <?php endforeach; ?>
-
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              "outline-variant": "#bec8d1",
-              "on-primary": "#ffffff",
-              "surface-container-lowest": "#ffffff",
-              "inverse-on-surface": "#f0f0f3",
-              "on-tertiary-fixed": "#2a1700",
-              "surface-container-high": "#e8e8ea",
-              "tertiary": "#845400",
-              "on-secondary-fixed-variant": "#264a62",
-              "primary-fixed-dim": "#88ceff",
-              "on-surface-variant": "#3e4850",
-              "surface": "#f9f9fc",
-              "surface-container": "#eeeef0",
-              "inverse-primary": "#88ceff",
-              "surface-bright": "#f9f9fc",
-              "surface-container-low": "#f3f3f6",
-              "secondary-fixed-dim": "#a7cbe7",
-              "on-surface": "#1a1c1e",
-              "error-container": "#ffdad6",
-              "on-error": "#ffffff",
-              "on-primary-fixed": "#001e2f",
-              "on-primary-container": "#00344d",
-              "primary-container": "#24a1e0",
-              "tertiary-fixed": "#ffddb7",
-              "on-primary-fixed-variant": "#004c6e",
-              "inverse-surface": "#2f3133",
-              "on-tertiary-container": "#462a00",
-              "on-error-container": "#93000a",
-              "error": "#ba1a1a",
-              "tertiary-container": "#d1880c",
-              "background": "#f9f9fc",
-              "surface-container-highest": "#e2e2e5",
-              "surface-dim": "#dadadc",
-              "secondary-fixed": "#c8e6ff",
-              "secondary": "#3f627b",
-              "primary-fixed": "#c8e6ff",
-              "surface-variant": "#e2e2e5",
-              "on-secondary-fixed": "#001e2f",
-              "secondary-container": "#bde1fe",
-              "outline": "#6f7881",
-              "on-background": "#1a1c1e",
-              "primary": "#006590",
-              "tertiary-fixed-dim": "#ffb95b",
-              "on-secondary-container": "#42657d",
-              "on-secondary": "#ffffff",
-              "on-tertiary": "#ffffff",
-              "on-tertiary-fixed-variant": "#643f00",
-              "surface-tint": "#006590"
-            },
-            borderRadius: {
-              "DEFAULT": "0.25rem",
-              "lg": "0.5rem",
-              "xl": "0.75rem",
-              "full": "9999px"
-            },
-            fontFamily: {
-              "headline": ["Inter"],
-              "body": ["Inter"],
-              "label": ["Inter"]
-            }
-          },
-        },
-      }
-    </script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f9f9fc; color: #1a1c1e; }
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        .glass-nav { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-        .primary-gradient { background: linear-gradient(135deg, #006590 0%, #24a1e0 100%); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
 </head>
 <body class="flex flex-col min-h-screen h-full bg-background text-on-background antialiased">
     <!-- Google Tag Manager (noscript) -->
@@ -354,14 +169,12 @@ if ($requestPath === '/' || $requestPath === '/sobre') {
     <nav class="glass-nav sticky top-0 z-50 shadow-sm border-b border-surface-container">
         <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
             <div class="flex items-center gap-6 overflow-x-auto no-scrollbar py-2 w-full lg:w-auto">
-                <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= empty(q('categoria')) && empty(q('sustentavel')) && !str_contains($_SERVER['REQUEST_URI'], '/sobre') && !str_contains($_SERVER['REQUEST_URI'], '/atendimento') ? 'text-primary font-bold border-b-2 border-primary pb-1' : '' ?>" href="<?= url('/catalogo') ?>">Novidades</a>
+                <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= $requestPath === '/brindes' && empty(q('sustentavel')) ? 'text-primary font-bold border-b-2 border-primary pb-1' : '' ?>" href="<?= url(Seo::urlHub()) ?>">Todos os Brindes</a>
                 <?php foreach (array_slice($cats, 0, 9) as $c): ?>
-                    <?php 
-                        $active = (q('categoria') === $c['categoria']) ? 'text-primary font-bold border-b-2 border-primary pb-1' : ''; 
-                    ?>
-                    <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= $active ?>" href="<?= url('/catalogo?categoria=' . rawurlencode($c['categoria'])) ?>"><?= e($c['categoria']) ?></a>
+                    <?php $active = ($catAtualSlug !== null && $catAtualSlug === ($c['slug'] ?? null)) ? 'text-primary font-bold border-b-2 border-primary pb-1' : ''; ?>
+                    <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= $active ?>" href="<?= url(Seo::urlCategoria($c['categoria'])) ?>"><?= e($c['categoria']) ?></a>
                 <?php endforeach; ?>
-                <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= !empty(q('sustentavel')) ? 'text-primary font-bold border-b-2 border-primary pb-1' : '' ?>" href="<?= url('/catalogo?sustentavel=1') ?>">Sustentáveis</a>
+                <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= !empty(q('sustentavel')) ? 'text-primary font-bold border-b-2 border-primary pb-1' : '' ?>" href="<?= url(Seo::urlHub() . '?sustentavel=1') ?>" rel="nofollow">Sustentáveis</a>
             </div>
         </div>
     </nav>
@@ -422,13 +235,9 @@ if ($requestPath === '/' || $requestPath === '/sobre') {
                 <div>
                     <h4 class="text-xs uppercase tracking-widest font-bold mb-6 text-white border-l-2 border-primary pl-3">Principais Categorias</h4>
                     <ul class="space-y-3">
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('BOLSAS E MOCHILAS')) ?>">Mochilas e Bolsas</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('ESCRITA')) ?>">Canetas</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('GARRAFAS E SQUEEZES')) ?>">Garrafas e Squeezes</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('KITS E CONJUNTOS')) ?>">Kits de Onboarding</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('CADERNOS E AGENDAS')) ?>">Moleskine & Cadernos</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('MOUSE PADS')) ?>">Mouse Pads</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo?categoria=' . rawurlencode('CARTEIRAS')) ?>">Carteiras</a></li>
+                        <?php foreach ([['Bolsas e Mochilas', 'Mochilas e bolsas personalizadas'], ['Canetas', 'Canetas personalizadas'], ['Garrafas e Squeezes', 'Garrafas e squeezes personalizados'], ['Kits e Conjuntos', 'Kits de onboarding'], ['Moleskine & Cadernos', 'Moleskines e cadernos personalizados'], ['Canecas e Copos', 'Canecas personalizadas'], ['Tecnologia', 'Brindes de tecnologia']] as [$catNome, $rotulo]): ?>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url(Seo::urlCategoria($catNome)) ?>"><?= e($rotulo) ?></a></li>
+                        <?php endforeach; ?>
                     </ul>
                 </div>
                 <div>
@@ -437,7 +246,7 @@ if ($requestPath === '/' || $requestPath === '/sobre') {
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/sobre') ?>">Nossa História</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="https://rastreamento.correios.com.br/app/index.php" target="_blank" rel="noopener">Rastrear Entrega</a></li>
                         <li><a id="whats-footer-time" class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">Fale com o Nosso Time</a></li>
-                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url('/catalogo') ?>">Ver Todos os Produtos</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url(Seo::urlHub()) ?>">Ver Todos os Produtos</a></li>
                     </ul>
                 </div>
                 <div>
@@ -450,8 +259,14 @@ if ($requestPath === '/' || $requestPath === '/sobre') {
             </div>
             <!-- Bottom Footer with Payments -->
             <div class="pt-8 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6 select-none">
-                <div class="text-[10px] text-slate-500 uppercase tracking-widest text-center md:text-left">
+                <div class="text-[10px] text-slate-500 uppercase tracking-widest text-center md:text-left leading-relaxed">
                     © <?= date('Y') ?> Novare Brindes. Todos os direitos reservados. Catálogo consultivo sem vendas online diretas.
+                    <?php if (!empty($entidade['razao_social']) || !empty($entidade['cnpj'])): ?>
+                    <br><?= e($entidade['razao_social'] ?? '') ?><?= !empty($entidade['cnpj']) ? ' · CNPJ ' . e($entidade['cnpj']) : '' ?>
+                    <?php endif; ?>
+                    <?php if (!empty($entidade['endereco']) || !empty($entidade['cidade'])): ?>
+                    <br><?= e(trim(($entidade['endereco'] ?? '') . ' ' . ($entidade['cidade'] ?? '') . ($entidade['uf'] ?? '' ? ' - ' . $entidade['uf'] : '') . (!empty($entidade['cep']) ? ' · CEP ' . $entidade['cep'] : ''))) ?>
+                    <?php endif; ?>
                 </div>
                 <div class="flex flex-wrap items-center gap-6 justify-center">
                     <!-- Formas de Pagamento Faturado -->

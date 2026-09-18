@@ -108,6 +108,56 @@ e a conexão com o banco. Será substituída pela Home no item 6.
 
 ---
 
+## CSS (Tailwind estático)
+
+O site **não** usa mais o CDN do Tailwind (compilava ~400 KB de JS no navegador). O CSS é
+compilado uma vez e commitado em `public/assets/css/app.css`:
+
+```bash
+npm install          # uma vez
+npm run css          # recompila public/assets/css/app.css (rode após mexer em classes nas views)
+npm run css:watch    # modo watch durante o desenvolvimento
+```
+
+Fonte: `src/css/app.css` + `tailwind.config.js` (escaneia `app/views/**` e `public/assets/js`).
+**Sempre commite o `app.css` gerado** — a Hostinger não roda build.
+
+---
+
+## SEO / AEO / GEO
+
+Tudo centralizado em [app/services/Seo.php](app/services/Seo.php) (URLs, slugs, title, canonical,
+JSON-LD). Views e controllers nunca montam `/brindes/...` na mão.
+
+**Estrutura de URL**
+
+| URL | O quê |
+|---|---|
+| `/brindes` | hub do catálogo |
+| `/brindes/{categoria}` | categoria (tabela `categorias`, slug estável) |
+| `/brindes/{categoria}/material/{m}` | faceta promovida (`seo_facetas`, indexável) — as demais são filtro livre `noindex,follow` |
+| `/brindes/produto/{slug}` | produto (slug **congelado**: gerado uma vez, nunca regenerado na sync) |
+| `/{slug}` | landing de ocasião (`seo_ocasioes`) |
+| `/produto/{sku}`, `/catalogo?categoria=` | legado → 301 |
+
+**Peças**
+
+- `SeoMigration` — schema/dados do pacote (aditiva, idempotente). Roda sozinha no 1º request
+  após o deploy; também pelo botão *Migração de SEO* do `migrate-web.php`.
+- `SeoGate` — portão de qualidade. Só **reporta** até o admin ligar `Portão ATIVO` em
+  `/settings-admin/seo`; ligado, produto reprovado vira `noindex,follow` e sai do sitemap.
+  Meta robots, sitemap e links internos leem a MESMA decisão (`Seo::produtoIndexavel`).
+- `SitemapGenerator` — índice segmentado (`/sitemap.xml` → institucional, categorias, ocasiões,
+  produtos-N). `lastmod` = `conteudo_alterado_em` (muda só quando o conteúdo muda). Também gera `/llms.txt`.
+- `IndexNow` — chave em `configuracoes`, publicada em `/{chave}.txt`; a sync envia só o que mudou.
+- `ImagemLocal` — converte a imagem principal (XBZ) para WebP no nosso domínio, em lotes pelo painel.
+- Painel: `/settings-admin/seo` — portão, dados operacionais (prazo/técnicas), entidade (razão social,
+  CNPJ, endereço, perfis), conteúdo próprio por produto/categoria, FAQ, landings, facetas, redirects.
+
+**Sem preço no site** (decisão de negócio: catálogo consultivo). O schema `Product` sai sem `offers`.
+
+---
+
 ## Sincronização XBZ (cron semanal)
 
 ```bash
@@ -151,8 +201,8 @@ arquivo do servidor depois de usar.
 php scripts/migrate.php      # cria/atualiza tabelas (banco já criado no hPanel)
 php scripts/sync_xbz.php     # primeira carga do catálogo
 ```
-**Sem CLI?** Acesse `https://SEU-DOMINIO/migrate-web.php` e clique em **1. Migração** e
-depois **2. Importar Catálogo REAL da XBZ**. **Apague `public/migrate-web.php` do servidor
+**Sem CLI?** Acesse `https://SEU-DOMINIO/migrate-web.php` e clique em **1. Migração**,
+depois **2. Importar Catálogo REAL da XBZ** e **Migração de SEO**. **Apague `public/migrate-web.php` do servidor
 em seguida.** Depois agende o cron semanal (seção acima).
 
 ---

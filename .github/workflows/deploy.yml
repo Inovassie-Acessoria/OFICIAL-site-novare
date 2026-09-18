@@ -48,5 +48,9 @@ jobs:
             public/assets/uploads/**
             tools/**
             node_modules/**
+            src/**
+            package.json
+            package-lock.json
+            tailwind.config.js
             start.bat
             start.sh

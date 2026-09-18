@@ -6,6 +6,9 @@ require_once __DIR__ . '/../config/Database.php';
 require_once __DIR__ . '/XBZService.php';
 require_once __DIR__ . '/ProductMapper.php';
 require_once __DIR__ . '/Cache.php';
+require_once __DIR__ . '/Seo.php';
+require_once __DIR__ . '/SeoGate.php';
+require_once __DIR__ . '/IndexNow.php';
 
 /**
  * Núcleo da sincronização do catálogo XBZ -> banco.
@@ -108,10 +111,14 @@ final class CatalogSync
 
         $upProduto = $pdo->prepare(
             'INSERT INTO produtos
-                (sku_pai, nome, descricao, categoria, material, preco_base, quantidade_minima, sustentavel, imagem_principal, tags, ativo, synced_at)
-             VALUES (:sku, :nome, :desc, :cat, :mat, :preco, :qmin, :sus, :img, :tags, 1, :sy)
+                (sku_pai, slug, nome, descricao, categoria, material, preco_base, quantidade_minima, sustentavel,
+                 imagem_principal, tags, ativo, synced_at, conteudo_hash, conteudo_alterado_em)
+             VALUES (:sku, :slug, :nome, :desc, :cat, :mat, :preco, :qmin, :sus, :img, :tags, 1, :sy, :hash, :sy2)
              ON DUPLICATE KEY UPDATE
                 id = LAST_INSERT_ID(id),
+                slug = COALESCE(slug, VALUES(slug)),
+                conteudo_alterado_em = IF(conteudo_hash <=> VALUES(conteudo_hash), conteudo_alterado_em, VALUES(conteudo_alterado_em)),
+                conteudo_hash = VALUES(conteudo_hash),
                 nome = VALUES(nome), descricao = VALUES(descricao), categoria = VALUES(categoria),
                 material = VALUES(material), preco_base = VALUES(preco_base),
                 quantidade_minima = VALUES(quantidade_minima), sustentavel = VALUES(sustentavel),
@@ -142,6 +149,16 @@ final class CatalogSync
         // -----------------------------------------------------------
         $c = ['pais_ins' => 0, 'pais_upd' => 0, 'var_ins' => 0, 'var_upd' => 0];
         $sufixosDesconhecidos = [];
+
+        // Slug é CONGELADO: produto existente mantém o seu (nunca regenera na
+        // sync — se a XBZ renomear o produto, a URL não pode quebrar). Só
+        // produto novo ganha slug, único contra o banco e contra este lote.
+        $slugPorSku = [];
+        $slugsUsados = [];
+        foreach ($pdo->query("SELECT sku_pai, slug FROM produtos WHERE slug IS NOT NULL AND slug <> ''")->fetchAll() as $r) {
+            $slugPorSku[(string) $r['sku_pai']] = (string) $r['slug'];
+            $slugsUsados[(string) $r['slug']] = true;
+        }
 
         try {
             $pdo->beginTransaction();
@@ -183,10 +200,24 @@ final class CatalogSync
                 $tags        = ProductMapper::gerarTags($categoria, $nome, $descricao);
                 $qtdMinima   = ProductMapper::quantidadeMinima($precoBase);
 
+                $slug = $slugPorSku[$skuPai] ?? null;
+                if ($slug === null) {
+                    $base = Seo::slugProduto($nome, $skuPai);
+                    $slug = $base;
+                    for ($i = 2; isset($slugsUsados[$slug]); $i++) {
+                        $slug = substr($base, 0, 170) . '-' . $i;
+                    }
+                    $slugsUsados[$slug] = true;
+                    $slugPorSku[$skuPai] = $slug;
+                }
+                // hash do que o usuário vê: muda => lastmod real do sitemap muda
+                $hash = md5(implode('|', [$nome, $descricao, $categoria, (string) $material, $imgPrincipal]));
+
                 $upProduto->execute([
-                    ':sku' => $skuPai, ':nome' => $nome, ':desc' => $descricao !== '' ? $descricao : null,
+                    ':sku' => $skuPai, ':slug' => $slug, ':nome' => $nome, ':desc' => $descricao !== '' ? $descricao : null,
                     ':cat' => $categoria, ':mat' => $material, ':preco' => $precoBase, ':qmin' => $qtdMinima,
                     ':sus' => $sustentavel, ':img' => $imgPrincipal, ':tags' => $tags, ':sy' => $syncStamp,
+                    ':hash' => $hash, ':sy2' => $syncStamp,
                 ]);
                 $produtoId = (int) $pdo->lastInsertId();
                 $upProduto->rowCount() === 1 ? $c['pais_ins']++ : $c['pais_upd']++;
@@ -254,7 +285,24 @@ final class CatalogSync
         // -----------------------------------------------------------
         $removidos = count(glob(APP_ROOT_PATH() . '/storage/cache/*.json') ?: []);
         Cache::flush();
+        Seo::limparCacheCategorias();
 
+        // -----------------------------------------------------------
+        // 7. SEO: reavalia o portão de qualidade e avisa o IndexNow só do que mudou
+        // -----------------------------------------------------------
+        try {
+            $gate = SeoGate::reavaliarCatalogo($pdo);
+            $log(sprintf('Portão de qualidade: %d/%d indexáveis (%s)', $gate['indexaveis'], $gate['avaliados'],
+                Seo::portaoAtivo() ? 'ATIVO' : 'só relatório'));
+        } catch (Throwable $e) {
+            $log('[AVISO] Portão de qualidade não rodou: ' . $e->getMessage());
+        }
+        try {
+            $idx = IndexNow::enviarAlteracoes($pdo, $syncStamp);
+            $log('IndexNow: ' . json_encode($idx, JSON_UNESCAPED_UNICODE));
+        } catch (Throwable $e) {
+            $log('[AVISO] IndexNow não enviado: ' . $e->getMessage());
+        }
         $c['sufixos_desconhecidos'] = count($sufixosDesconhecidos);
         $resumo = sprintf(
             'Pais: +%d/~%d | Variações: +%d/~%d | Inativados: %d pais, %d var | Cores novas p/ revisão: %d | Cache limpo: %d',

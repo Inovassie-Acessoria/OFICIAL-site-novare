@@ -13,19 +13,19 @@ $pdo = Database::connection();
 $stmtImg = $pdo->prepare("SELECT imagem_principal FROM produtos WHERE categoria = :cat AND ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' LIMIT 1");
 
 // Top 10 Canetas (Escrita)
-$stmtCanetas = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'CANETAS' OR categoria = 'ESCRITA' OR nome LIKE '%caneta%' OR nome LIKE '%lapiseira%' OR nome LIKE '%roller%') ORDER BY id ASC LIMIT 10");
+$stmtCanetas = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'Canetas' OR nome LIKE '%caneta%' OR nome LIKE '%lapiseira%' OR nome LIKE '%roller%') ORDER BY id ASC LIMIT 10");
 $topCanetas = $stmtCanetas->fetchAll();
 
 // Top 10 Cadernos / Agendas / Moleskine
-$stmtCadernos = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'MOLESKINE & CADERNOS' OR categoria = 'CADERNOS E AGENDAS' OR nome LIKE '%caderno%' OR nome LIKE '%caderneta%' OR nome LIKE '%agenda%' OR nome LIKE '%moleskine%' OR nome LIKE '%planner%') ORDER BY id ASC LIMIT 10");
+$stmtCadernos = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'Moleskine & Cadernos' OR nome LIKE '%caderno%' OR nome LIKE '%caderneta%' OR nome LIKE '%agenda%' OR nome LIKE '%moleskine%' OR nome LIKE '%planner%') ORDER BY id ASC LIMIT 10");
 $topCadernos = $stmtCadernos->fetchAll();
 
 // Top 10 Garrafas
-$stmtGarrafas = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'GARRAFAS E SQUEEZES' OR nome LIKE '%garrafa%' OR nome LIKE '%squeeze%') ORDER BY id ASC LIMIT 10");
+$stmtGarrafas = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'GARRAFAS E SQUEEZES' OR nome LIKE '%garrafa%' OR nome LIKE '%squeeze%') ORDER BY id ASC LIMIT 10");
 $topGarrafas = $stmtGarrafas->fetchAll();
 
 // Top 10 Mochilas
-$stmtMochilas = $pdo->query("SELECT sku_pai, nome, preco_base, imagem_principal, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'BOLSAS E MOCHILAS' OR nome LIKE '%mochila%') ORDER BY id ASC LIMIT 10");
+$stmtMochilas = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'BOLSAS E MOCHILAS' OR nome LIKE '%mochila%') ORDER BY id ASC LIMIT 10");
 $topMochilas = $stmtMochilas->fetchAll();
 
 // Ranking MANUAL do painel admin tem prioridade (arrastar/soltar por SKU).
@@ -80,6 +80,10 @@ if ($categorias) {
 <!-- Category Circles with Real Database Photos -->
 <?php if ($categoriasOrdenadas): ?>
 <section class="py-10 bg-white border-b border-surface-container/30 select-none">
+    <div class="max-w-7xl mx-auto px-6 mb-6">
+        <h1 class="text-xl md:text-2xl font-black text-on-surface tracking-tight">Brindes corporativos personalizados para empresas</h1>
+        <p class="text-xs text-slate-500 mt-1">Catálogo com milhares de itens, personalização com a logo da sua empresa e orçamento pelo WhatsApp. Navegue por categoria:</p>
+    </div>
     <div class="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6 overflow-x-auto no-scrollbar">
         <?php foreach (array_slice($categoriasOrdenadas, 0, 9) as $cat): 
             $nomeCat = $cat['categoria'];
@@ -133,7 +137,7 @@ if ($categorias) {
                 $imgCat = $imgCatAdmin;
             }
         ?>
-            <a href="<?= url('/catalogo?categoria=' . rawurlencode(SiteContent::categoriaFiltro($nomeCat))) ?>" class="flex flex-col items-center gap-2.5 min-w-[90px] group cursor-pointer text-center">
+            <a href="<?= Seo::urlCategoria(SiteContent::categoriaFiltro($nomeCat)) ?>" class="flex flex-col items-center gap-2.5 min-w-[90px] group cursor-pointer text-center">
                 <div class="w-16 h-16 rounded-full overflow-hidden border border-surface-container shadow-sm group-hover:border-primary/30 group-hover:shadow-md active:scale-95 transition-all flex items-center justify-center bg-surface-container-low">
                     <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="<?= e($nomeCat) ?> Personalizados - Novare Brindes" src="<?= e($imgCat) ?>" loading="lazy" />
                 </div>
@@ -142,7 +146,7 @@ if ($categorias) {
         <?php endforeach; ?>
         
         <!-- Botão Ver Tudo -->
-        <a href="<?= url('/catalogo') ?>" class="flex flex-col items-center gap-2.5 min-w-[90px] group cursor-pointer text-center">
+        <a href="<?= url(Seo::urlHub()) ?>" class="flex flex-col items-center gap-2.5 min-w-[90px] group cursor-pointer text-center">
             <div class="w-16 h-16 rounded-full bg-slate-900 text-white border border-slate-950 shadow-sm group-hover:shadow-md active:scale-95 transition-all flex items-center justify-center">
                 <span class="material-symbols-outlined text-2xl group-hover:rotate-45 transition-transform duration-300">grid_view</span>
             </div>
@@ -164,7 +168,7 @@ if ($categorias) {
             $bTitulo  = (string) ($b['titulo'] ?? '');
             $bSub     = (string) ($b['subtitulo'] ?? '');
             $bCtaTxt  = (string) ($b['cta_texto'] ?? 'Ver produtos');
-            $bCtaLink = (string) ($b['cta_link'] ?? '/catalogo');
+            $bCtaLink = (string) ($b['cta_link'] ?? Seo::urlHub());
             $semTexto = !empty($b['sem_texto']);
             
             // Detecta se a URL da mídia é de um vídeo baseado na extensão
@@ -197,7 +201,7 @@ if ($categorias) {
                             <?php if ($bTag !== ''): ?>
                                 <span class="bg-primary/20 text-sky-400 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-sky-400/30 mb-4 inline-block"><?= e($bTag) ?></span>
                             <?php endif; ?>
-                            <h1 class="text-4xl md:text-5xl font-black leading-none tracking-tighter mb-4"><?= e($bTitulo) ?></h1>
+                            <p class="text-4xl md:text-5xl font-black leading-none tracking-tighter mb-4"><?= e($bTitulo) ?></p>
                             <?php if ($bSub !== ''): ?>
                                 <p class="text-xs md:text-sm text-slate-300 mb-8 font-medium leading-relaxed max-w-md"><?= e($bSub) ?></p>
                             <?php endif; ?>
@@ -316,7 +320,7 @@ if ($categorias) {
             }
         ?>
             <!-- Card de Ranking -->
-            <div onclick="location.href='<?= url('/produto/' . rawurlencode($p['sku_pai'])) ?>'" class="min-w-[260px] sm:min-w-[280px] snap-start bg-white border border-surface-container rounded-2xl p-6 flex flex-col justify-between group cursor-pointer hover:border-primary/10 hover:shadow-xl active:scale-[0.98] transition-all shadow-sm relative overflow-hidden">
+            <a href="<?= Seo::urlProduto($p) ?>" class="min-w-[260px] sm:min-w-[280px] snap-start bg-white border border-surface-container rounded-2xl p-6 flex flex-col justify-between group cursor-pointer hover:border-primary/10 hover:shadow-xl active:scale-[0.98] transition-all shadow-sm relative overflow-hidden block">
                 <!-- Badge de Ranking -->
                 <div class="absolute top-4 left-4 z-20 px-3.5 py-1.5 rounded-full text-[9px] uppercase tracking-wider shadow-sm select-none <?= $badgeClass ?>">
                     <?= $badgeText ?>
@@ -339,7 +343,7 @@ if ($categorias) {
                         </span>
                     </div>
                 </div>
-            </div>
+            </a>
         <?php endforeach; ?>
     </div>
 </section>
@@ -387,7 +391,7 @@ if ($categorias) {
             }
         ?>
             <!-- Card de Ranking -->
-            <div onclick="location.href='<?= url('/produto/' . rawurlencode($p['sku_pai'])) ?>'" class="min-w-[260px] sm:min-w-[280px] snap-start bg-white border border-surface-container rounded-2xl p-6 flex flex-col justify-between group cursor-pointer hover:border-primary/10 hover:shadow-xl active:scale-[0.98] transition-all shadow-sm relative overflow-hidden">
+            <a href="<?= Seo::urlProduto($p) ?>" class="min-w-[260px] sm:min-w-[280px] snap-start bg-white border border-surface-container rounded-2xl p-6 flex flex-col justify-between group cursor-pointer hover:border-primary/10 hover:shadow-xl active:scale-[0.98] transition-all shadow-sm relative overflow-hidden block">
                 <!-- Badge de Ranking -->
                 <div class="absolute top-4 left-4 z-20 px-3.5 py-1.5 rounded-full text-[9px] uppercase tracking-wider shadow-sm select-none <?= $badgeClass ?>">
                     <?= $badgeText ?>
@@ -410,7 +414,7 @@ if ($categorias) {
                         </span>
                     </div>
                 </div>
-            </div>
+            </a>
         <?php endforeach; ?>
     </div>
 </section>
@@ -458,7 +462,7 @@ if ($categorias) {
             }
         ?>
             <!-- Card de Ranking -->
-            <div onclick="location.href='<?= url('/produto/' . rawurlencode($p['sku_pai'])) ?>'" class="min-w-[260px] sm:min-w-[280px] snap-start bg-white border border-surface-container rounded-2xl p-6 flex flex-col justify-between group cursor-pointer hover:border-primary/10 hover:shadow-xl active:scale-[0.98] transition-all shadow-sm relative overflow-hidden">
+            <a href="<?= Seo::urlProduto($p) ?>" class="min-w-[260px] sm:min-w-[280px] snap-start bg-white border border-surface-container rounded-2xl p-6 flex flex-col justify-between group cursor-pointer hover:border-primary/10 hover:shadow-xl active:scale-[0.98] transition-all shadow-sm relative overflow-hidden block">
                 <!-- Badge de Ranking -->
                 <div class="absolute top-4 left-4 z-20 px-3.5 py-1.5 rounded-full text-[9px] uppercase tracking-wider shadow-sm select-none <?= $badgeClass ?>">
                     <?= $badgeText ?>
@@ -481,7 +485,7 @@ if ($categorias) {
                         </span>
                     </div>
                 </div>
-            </div>
+            </a>
         <?php endforeach; ?>
     </div>
 </section>
@@ -529,7 +533,7 @@ if ($categorias) {
             }
         ?>
             <!-- Card de Ranking -->
-            <div onclick="location.href='<?= url('/produto/' . rawurlencode($p['sku_pai'])) ?>'" class="min-w-[260px] sm:min-w-[280px] snap-start bg-white border border-surface-container rounded-2xl p-6 flex flex-col justify-between group cursor-pointer hover:border-primary/10 hover:shadow-xl active:scale-[0.98] transition-all shadow-sm relative overflow-hidden">
+            <a href="<?= Seo::urlProduto($p) ?>" class="min-w-[260px] sm:min-w-[280px] snap-start bg-white border border-surface-container rounded-2xl p-6 flex flex-col justify-between group cursor-pointer hover:border-primary/10 hover:shadow-xl active:scale-[0.98] transition-all shadow-sm relative overflow-hidden block">
                 <!-- Badge de Ranking -->
                 <div class="absolute top-4 left-4 z-20 px-3.5 py-1.5 rounded-full text-[9px] uppercase tracking-wider shadow-sm select-none <?= $badgeClass ?>">
                     <?= $badgeText ?>
@@ -552,7 +556,7 @@ if ($categorias) {
                         </span>
                     </div>
                 </div>
-            </div>
+            </a>
         <?php endforeach; ?>
     </div>
 </section>
@@ -574,7 +578,7 @@ if ($categorias) {
             $img = $p['imagem_principal'] ?? '';
         ?>
             <!-- Large Featured -->
-            <div onclick="location.href='<?= url('/produto/' . rawurlencode($p['sku_pai'])) ?>'" class="md:col-span-2 md:row-span-2 bg-white rounded-3xl p-8 flex flex-col justify-between group cursor-pointer border border-surface-container hover:border-primary/10 hover:shadow-xl transition-all shadow-sm">
+            <a href="<?= Seo::urlProduto($p) ?>" class="md:col-span-2 md:row-span-2 bg-white rounded-3xl p-8 flex flex-col justify-between group cursor-pointer border border-surface-container hover:border-primary/10 hover:shadow-xl transition-all shadow-sm block">
                 <div>
                     <span class="bg-primary-container text-on-primary-container px-3.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-wider mb-4 inline-block shadow-sm">Destaque Principal</span>
                     <h3 class="text-2xl font-black text-on-surface tracking-tighter group-hover:text-primary transition-colors leading-tight"><?= e($p['nome']) ?></h3>
@@ -590,7 +594,7 @@ if ($categorias) {
                         Ver produto <span class="material-symbols-outlined text-[12px] font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
                     </span>
                 </div>
-            </div>
+            </a>
         <?php endif; ?>
 
         <?php if (isset($destaques[1])): 
@@ -598,7 +602,7 @@ if ($categorias) {
             $img = $p['imagem_principal'] ?? '';
         ?>
             <!-- Small Featured 1 (horizontal card) -->
-            <div onclick="location.href='<?= url('/produto/' . rawurlencode($p['sku_pai'])) ?>'" class="md:col-span-2 bg-secondary-container/10 rounded-3xl p-6 flex items-center justify-between gap-6 group cursor-pointer border border-transparent hover:border-primary/10 hover:shadow-lg transition-all shadow-sm">
+            <a href="<?= Seo::urlProduto($p) ?>" class="md:col-span-2 bg-secondary-container/10 rounded-3xl p-6 flex items-center justify-between gap-6 group cursor-pointer border border-transparent hover:border-primary/10 hover:shadow-lg transition-all shadow-sm block">
                 <div class="flex-grow flex flex-col justify-between">
                     <div class="mb-4">
                         <?php if (!empty($p['sku_pai'])): ?>
@@ -618,7 +622,7 @@ if ($categorias) {
                         <img class="max-h-full max-w-full object-contain group-hover:rotate-3 transition-transform duration-300" alt="<?= e($p['nome']) ?>" src="<?= e($img) ?>" />
                     <?php endif; ?>
                 </div>
-            </div>
+            </a>
         <?php endif; ?>
 
         <?php if (isset($destaques[2])): 
@@ -626,7 +630,7 @@ if ($categorias) {
             $img = $p['imagem_principal'] ?? '';
         ?>
             <!-- Small Featured 2 -->
-            <div onclick="location.href='<?= url('/produto/' . rawurlencode($p['sku_pai'])) ?>'" class="md:col-span-1 bg-white border border-surface-container rounded-3xl p-6 flex flex-col justify-between group cursor-pointer hover:shadow-lg transition-all shadow-sm">
+            <a href="<?= Seo::urlProduto($p) ?>" class="md:col-span-1 bg-white border border-surface-container rounded-3xl p-6 flex flex-col justify-between group cursor-pointer hover:shadow-lg transition-all shadow-sm block">
                 <div class="h-28 flex items-center justify-center mb-4">
                     <?php if ($img !== ''): ?>
                         <img class="max-h-full object-contain group-hover:scale-105 transition-transform" alt="<?= e($p['nome']) ?>" src="<?= e($img) ?>" />
@@ -644,7 +648,7 @@ if ($categorias) {
                         </span>
                     </div>
                 </div>
-            </div>
+            </a>
         <?php endif; ?>
 
         <?php if (isset($destaques[3])): 
@@ -652,7 +656,7 @@ if ($categorias) {
             $img = $p['imagem_principal'] ?? '';
         ?>
             <!-- Small Featured 3 -->
-            <div onclick="location.href='<?= url('/produto/' . rawurlencode($p['sku_pai'])) ?>'" class="md:col-span-1 bg-white border border-surface-container rounded-3xl p-6 flex flex-col justify-between group cursor-pointer hover:shadow-lg transition-all shadow-sm">
+            <a href="<?= Seo::urlProduto($p) ?>" class="md:col-span-1 bg-white border border-surface-container rounded-3xl p-6 flex flex-col justify-between group cursor-pointer hover:shadow-lg transition-all shadow-sm block">
                 <div class="h-28 flex items-center justify-center mb-4">
                     <?php if ($img !== ''): ?>
                         <img class="max-h-full object-contain group-hover:scale-105 transition-transform" alt="<?= e($p['nome']) ?>" src="<?= e($img) ?>" />
@@ -670,7 +674,7 @@ if ($categorias) {
                         </span>
                     </div>
                 </div>
-            </div>
+            </a>
         <?php endif; ?>
     </div>
 </section>
@@ -685,7 +689,7 @@ if ($categorias) {
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Categoria 1: Moleskines -->
-        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('CADERNOS E AGENDAS')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
+        <a href="<?= Seo::urlCategoria('Moleskine & Cadernos') ?>" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all block">
             <div class="absolute inset-0 bg-gradient-to-t from-[#006590]/50 via-[#006590]/15 to-transparent z-10"></div>
             <img class="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" alt="Moleskines e Agendas" src="<?= asset('images/cat_moleskine.png') ?>" loading="lazy" />
             <div class="absolute bottom-6 left-6 right-6 z-20 text-white">
@@ -693,10 +697,10 @@ if ($categorias) {
                 <h4 class="text-xl font-extrabold tracking-tight leading-none mb-1">Cadernos & Moleskines</h4>
                 <p class="text-[9px] text-white/80 font-medium uppercase tracking-wider mt-1.5 flex items-center gap-1">Ideias registradas com elegância executiva <span class="text-xs">&rarr;</span></p>
             </div>
-        </div>
+        </a>
 
         <!-- Categoria 2: Garrafas -->
-        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('GARRAFAS E SQUEEZES')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
+        <a href="<?= Seo::urlCategoria('Garrafas e Squeezes') ?>" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all block">
             <div class="absolute inset-0 bg-gradient-to-t from-[#006590]/50 via-[#006590]/15 to-transparent z-10"></div>
             <img class="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" alt="Garrafas Térmicas e Squeezes" src="<?= asset('images/cat_garrafas.png') ?>" loading="lazy" />
             <div class="absolute bottom-6 left-6 right-6 z-20 text-white">
@@ -704,10 +708,10 @@ if ($categorias) {
                 <h4 class="text-xl font-extrabold tracking-tight leading-none mb-1">Garrafas & Squeezes</h4>
                 <p class="text-[9px] text-white/80 font-medium uppercase tracking-wider mt-1.5 flex items-center gap-1">Hidratação inteligente para sua equipe <span class="text-xs">&rarr;</span></p>
             </div>
-        </div>
+        </a>
 
         <!-- Categoria 3: Mochilas -->
-        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('BOLSAS E MOCHILAS')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
+        <a href="<?= Seo::urlCategoria('Bolsas e Mochilas') ?>" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all block">
             <div class="absolute inset-0 bg-gradient-to-t from-[#006590]/50 via-[#006590]/15 to-transparent z-10"></div>
             <img class="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" alt="Mochilas Executivas" src="<?= asset('images/cat_mochilas.png') ?>" loading="lazy" />
             <div class="absolute bottom-6 left-6 right-6 z-20 text-white">
@@ -715,10 +719,10 @@ if ($categorias) {
                 <h4 class="text-xl font-extrabold tracking-tight leading-none mb-1">Mochilas & Malas</h4>
                 <p class="text-[9px] text-white/80 font-medium uppercase tracking-wider mt-1.5 flex items-center gap-1">Praticidade e conforto executivo em trânsito <span class="text-xs">&rarr;</span></p>
             </div>
-        </div>
+        </a>
 
         <!-- Categoria 4: Kit Onboarding -->
-        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('KITS E CONJUNTOS')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
+        <a href="<?= Seo::urlCategoria('Kits e Conjuntos') ?>" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all block">
             <div class="absolute inset-0 bg-gradient-to-t from-[#006590]/50 via-[#006590]/15 to-transparent z-10"></div>
             <img class="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" alt="Kit Onboarding Boas-Vindas" src="<?= asset('images/cat_onboarding.png') ?>" loading="lazy" />
             <div class="absolute bottom-6 left-6 right-6 z-20 text-white">
@@ -726,10 +730,10 @@ if ($categorias) {
                 <h4 class="text-xl font-extrabold tracking-tight leading-none mb-1">Kits de Onboarding</h4>
                 <p class="text-[9px] text-white/80 font-medium uppercase tracking-wider mt-1.5 flex items-center gap-1">Acolha novos talentos com experiência única <span class="text-xs">&rarr;</span></p>
             </div>
-        </div>
+        </a>
 
         <!-- Categoria 5: Canecas -->
-        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('CANECAS E COPOS')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
+        <a href="<?= Seo::urlCategoria('Canecas e Copos') ?>" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all block">
             <div class="absolute inset-0 bg-gradient-to-t from-[#006590]/50 via-[#006590]/15 to-transparent z-10"></div>
             <img class="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" alt="Canecas e Copos Personalizados" src="<?= asset('images/cat_canecas.png') ?>" loading="lazy" />
             <div class="absolute bottom-6 left-6 right-6 z-20 text-white">
@@ -737,10 +741,10 @@ if ($categorias) {
                 <h4 class="text-xl font-extrabold tracking-tight leading-none mb-1">Canecas & Copos</h4>
                 <p class="text-[9px] text-white/80 font-medium uppercase tracking-wider mt-1.5 flex items-center gap-1">Sua marca presente nos momentos de pausa <span class="text-xs">&rarr;</span></p>
             </div>
-        </div>
+        </a>
 
         <!-- Categoria 6: Canetas (Escrita) -->
-        <div onclick="location.href='<?= url('/catalogo?categoria=' . rawurlencode('ESCRITA')) ?>'" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all">
+        <a href="<?= Seo::urlCategoria('Canetas') ?>" class="relative overflow-hidden rounded-none h-[440px] group cursor-pointer shadow-sm hover:shadow-lg border border-surface-container/50 transition-all block">
             <div class="absolute inset-0 bg-gradient-to-t from-[#006590]/50 via-[#006590]/15 to-transparent z-10"></div>
             <img class="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" alt="Canetas de Luxo Executivas" src="<?= asset('images/cat_canetas.png') ?>" loading="lazy" />
             <div class="absolute bottom-6 left-6 right-6 z-20 text-white">
@@ -748,7 +752,7 @@ if ($categorias) {
                 <h4 class="text-xl font-extrabold tracking-tight leading-none mb-1">Canetas & Lapiseiras</h4>
                 <p class="text-[9px] text-white/80 font-medium uppercase tracking-wider mt-1.5 flex items-center gap-1">Elegância e precisão para assinar momentos <span class="text-xs">&rarr;</span></p>
             </div>
-        </div>
+        </a>
     </div>
 </section>
 
@@ -915,6 +919,11 @@ $depoimentos = [
 
 
 <!-- JavaScript do Slider Automático de 5 Segundos e Rolagem por Mouse Wheel -->
+
+<!-- Perguntas frequentes: as MESMAS do schema FAQPage (schema de conteúdo invisível é violação) -->
+<section class="max-w-7xl mx-auto px-6 mb-16">
+    <?php partial('faq', ['faq' => $faq ?? [], 'titulo' => 'Perguntas frequentes sobre brindes corporativos personalizados']); ?>
+</section>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // Lógica do Slider

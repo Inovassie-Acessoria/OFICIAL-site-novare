@@ -19,7 +19,7 @@
         <a href="<?= url('/') ?>" class="primary-gradient text-white px-6 py-3 rounded-lg text-xs font-bold uppercase tracking-wider shadow-md hover:opacity-95 transition-opacity inline-flex items-center gap-1.5">
             <span class="material-symbols-outlined text-sm">home</span> Início
         </a>
-        <a href="<?= url('/catalogo') ?>" class="border border-secondary text-secondary hover:bg-surface px-6 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors shadow-sm inline-flex items-center gap-1.5">
+        <a href="<?= url(Seo::urlHub()) ?>" class="border border-secondary text-secondary hover:bg-surface px-6 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors shadow-sm inline-flex items-center gap-1.5">
             <span class="material-symbols-outlined text-sm">grid_view</span> Catálogo
         </a>
     </div>
