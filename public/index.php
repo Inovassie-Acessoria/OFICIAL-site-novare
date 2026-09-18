@@ -31,8 +31,9 @@ $path = '/' . trim(rawurldecode($path), '/');
 // comportamento mesmo que o .htaccess não seja processado.
 // ------------------------------------------------------------
 $hostAtual = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
-$ehLocal   = $hostAtual === '' || str_starts_with($hostAtual, 'localhost') || str_starts_with($hostAtual, '127.0.0.1')
-          || Env::get('APP_ENV', 'production') === 'local';
+// Só pelo host: o .env do servidor pode estar com APP_ENV=local por engano, e aí
+// a canonicalização seria pulada em produção.
+$ehLocal   = $hostAtual === '' || str_starts_with($hostAtual, 'localhost') || str_starts_with($hostAtual, '127.0.0.1');
 if (!$ehLocal && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $hostCanonico = strtolower((string) parse_url(Seo::host(), PHP_URL_HOST));
     $precisaRedirect = false;

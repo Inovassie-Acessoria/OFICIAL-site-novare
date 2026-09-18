@@ -1,17 +1,36 @@
 # ============================================================
-#  Novare Brindes — Redireciona tudo para /public (Hostinger)
+#  Novare Brindes — .htaccess da RAIZ (Hostinger / LiteSpeed)
+#
+#  Este arquivo roda ANTES do rewrite interno para /public, com a
+#  REQUEST_URI original. As regras de host canônico e barra final
+#  precisam ficar AQUI: dentro de public/.htaccess a URI já chega
+#  reescrita como /public/index.php (o www redirecionava para lá).
 # ============================================================
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Se o arquivo/pasta existe dentro de /public, serve direto
+    # ---- 1. HOST CANÔNICO: https + sem www (exceto ambiente local)
+    RewriteCond %{HTTP_HOST} !^localhost [NC]
+    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1 [NC]
+    RewriteCond %{HTTPS} off [OR]
+    RewriteCond %{HTTP_HOST} ^www\. [NC]
+    RewriteCond %{HTTP_HOST} ^(?:www\.)?(.+)$ [NC]
+    RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+
+    # ---- 2. Sem barra final (uma convenção, para sempre)
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} !-d
+    RewriteCond %{REQUEST_URI} ^(.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # ---- 3. Se o arquivo/pasta existe dentro de /public, serve direto
     RewriteCond %{REQUEST_URI} !^/public/
     RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f [OR]
     RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -d
     RewriteRule ^(.*)$ /public/$1 [L]
 
-    # Todo o resto vai para /public/index.php (front controller)
+    # ---- 4. Todo o resto vai para /public/index.php (front controller)
     RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ /public/index.php [L]
 </IfModule>

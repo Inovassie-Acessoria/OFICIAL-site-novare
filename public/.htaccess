@@ -13,27 +13,16 @@ AddDefaultCharset utf-8
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # ---- 1. HOST CANÔNICO ÚNICO: https + sem www (exceto ambiente local)
-    # O canonical de todas as páginas e o sitemap apontam para o host SEM www.
-    # Sem isto o mesmo conteúdo existe em 4 endereços e o Google divide os sinais.
-    RewriteCond %{HTTP_HOST} !^localhost [NC]
-    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1 [NC]
-    RewriteCond %{HTTPS} off [OR]
-    RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
-    RewriteCond %{HTTP_HOST} ^(?:www\.)?(.+)$ [NC]
-    RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+    # Host canônico (www -> sem www) e barra final ficam no .htaccess da RAIZ:
+    # aqui dentro a REQUEST_URI já chega reescrita (/public/index.php) e a regra
+    # redirecionava para o lugar errado. O PHP (index.php) é a 2ª camada.
 
-    # ---- 2. Sem barra final (uma convenção, para sempre)
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} ^(.+)/$
-    RewriteRule ^ %1 [L,R=301]
-
-    # ---- 3. Arquivos/pastas reais são servidos diretamente
+    # ---- 1. Arquivos/pastas reais são servidos diretamente
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # ---- 4. Todo o resto vai para o front controller
+    # ---- 2. Todo o resto vai para o front controller
     RewriteRule ^ index.php [L]
 </IfModule>
 
