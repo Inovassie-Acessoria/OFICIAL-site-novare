@@ -12,8 +12,28 @@ require_once __DIR__ . '/../app/services/Seo.php';
 require_once __DIR__ . '/../app/services/SeoMigration.php';
 require_once __DIR__ . '/../app/services/SeoGate.php';
 require_once __DIR__ . '/../app/services/IndexNow.php';
+require_once __DIR__ . '/../app/services/AdminAuth.php';
 
 Env::load();
+
+// ------------------------------------------------------------
+// Acesso só para quem está logado no painel /settings-admin.
+// Antes este arquivo ficava aberto: qualquer visitante (ou robô seguindo o
+// link) podia rodar as ações. Sem login, nenhuma ação roda.
+// ------------------------------------------------------------
+header('X-Robots-Tag: noindex, nofollow');
+header('Cache-Control: no-store');
+if (!AdminAuth::logado()) {
+    http_response_code(403);
+    echo '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><title>Acesso restrito</title></head>'
+        . '<body style="font-family:sans-serif;max-width:480px;margin:80px auto;color:#1e293b">'
+        . '<h1 style="font-size:20px">Acesso restrito</h1><p>Entre no <a href="/settings-admin">painel</a> e abra esta página de novo.</p></body></html>';
+    exit;
+}
+
+// Itens de teste só na máquina local (pelo host, não pelo .env, que pode estar errado no servidor).
+$hostReq = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+$ehLocal = str_starts_with($hostReq, 'localhost') || str_starts_with($hostReq, '127.0.0.1');
 
 $action = $_GET['action'] ?? null;
 $message = '';
@@ -49,30 +69,23 @@ if ($action === 'migrate') {
             throw new Exception("Arquivo schema.sql não encontrado.");
         }
         
-        // Desativa checagem de FK para limpar com segurança
-        $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
-        
-        // Busca e dropa TODAS as tabelas existentes de forma dinâmica
-        $stmtTables = $pdo->query("SHOW TABLES");
-        $tables = $stmtTables->fetchAll(PDO::FETCH_COLUMN);
-        foreach ($tables as $table) {
-            $pdo->exec("DROP TABLE IF EXISTS `{$table}`;");
-        }
-        
-        $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
-        
+        // NUNCA apaga tabela nem dado: o schema.sql só tem CREATE TABLE IF NOT EXISTS
+        // e upsert de cores, então rodar de novo apenas cria o que estiver faltando.
         $statements = split_sql(file_get_contents($sqlFile) ?: '');
         $count = 0;
         foreach ($statements as $sql) {
             $pdo->exec($sql);
             $count++;
         }
-        $message = "Banco de dados configurado com sucesso! Todas as tabelas antigas foram limpas e recriadas. {$count} comandos SQL executados.";
+        $message = "Estrutura conferida: tabelas que faltavam foram criadas, nada foi apagado. {$count} comandos SQL executados.";
     } catch (Throwable $e) {
         $error = "Erro ao executar migração: " . $e->getMessage();
     }
 } elseif ($action === 'seed') {
     try {
+        if (!$ehLocal) {
+            throw new Exception('Itens de teste só podem ser criados em ambiente local, nunca no site no ar.');
+        }
         $pdo = Database::connection();
         
         // Verifica se a tabela produtos existe
@@ -152,10 +165,10 @@ if ($action === 'migrate') {
             }
         }
 
-        // Remove produtos órfãos ou sem imagem principal
-        $pdo->exec("DELETE FROM produtos WHERE imagem_principal IS NULL OR imagem_principal = '';");
+        // Nunca apaga produto: sem imagem principal = inativo
+        $pdo->exec("UPDATE produtos SET ativo = 0 WHERE ativo = 1 AND (imagem_principal IS NULL OR imagem_principal = '')");
         $pdo->commit();
-        $message = "Dados semeados com sucesso! Inseridos {$nProd} produtos-pai e {$nVar} variações de demonstração (produtos sem imagem foram limpos).";
+        $message = "Dados semeados com sucesso! Inseridos {$nProd} produtos-pai e {$nVar} variações de demonstração (produtos sem imagem foram inativados).";
     } catch (Throwable $e) {
         if (isset($pdo) && $pdo->inTransaction()) {
             $pdo->rollBack();
@@ -425,7 +438,7 @@ if ($action === 'migrate') {
 <body>
     <div class="container">
         <div class="logo">Novare Brindes</div>
-        <div class="subtitle">Configurador Web de Banco de Dados (v2.0 - Auto-Limpeza)</div>
+        <div class="subtitle">Configurador Web de Banco de Dados (acesso só com login do painel)</div>
 
         <?php if ($message): ?>
             <div class="alert alert-success">
@@ -440,15 +453,15 @@ if ($action === 'migrate') {
         <?php endif; ?>
 
         <div class="alert alert-warning">
-            ⚠️ <strong>Aviso de Segurança:</strong> delete este arquivo (<code>public/migrate-web.php</code>) do servidor Hostinger após utilizá-lo para evitar acessos indesejados.
+            🔒 Página restrita ao painel. Nenhuma ação desta página apaga tabelas ou produtos.
         </div>
 
-        <a href="?action=migrate" class="btn">1. Executar Migração (Criar Tabelas)</a>
+        <a href="?action=migrate" class="btn">1. Conferir estrutura (cria só o que faltar, sem apagar)</a>
         <a href="?action=sync" class="btn btn-secondary"
            onclick="this.textContent='Sincronizando catálogo XBZ... (pode levar 1-2 min)';this.style.opacity='.7';">
            2. Importar Catálogo REAL da XBZ
         </a>
-        <a href="?action=seed" class="btn btn-outline">Alternativa: popular com 6 itens de teste</a>
+        <?php if ($ehLocal): ?><a href="?action=seed" class="btn btn-outline">Só local: popular com 6 itens de teste</a><?php endif; ?>
         <a href="?action=reindex" class="btn btn-outline">Reparar índice de busca (incluir tags) — sem apagar dados</a>
         <a href="?action=qtd-minima" class="btn btn-outline">📦 Recalcular quantidade mínima por faixa de preço — sem apagar dados</a>
         <a href="?action=seo" class="btn btn-outline">🔎 Migração de SEO (slugs, categorias, portão de qualidade) — sem apagar dados</a>
