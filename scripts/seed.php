@@ -102,5 +102,5 @@ foreach ($demo as [$sku, $nome, $desc, $cat, $mat, $preco, $qmin, $sus, $sufixos
 $pdo->exec("UPDATE produtos SET ativo = 0 WHERE ativo = 1 AND (imagem_principal IS NULL OR imagem_principal = '')");
 $pdo->commit();
 
-echo "✓ Seed concluído: {$nProd} produtos-pai e {$nVar} variações de demonstração (produtos sem imagem foram limpos).\n";
+echo "✓ Seed concluído: {$nProd} produtos-pai e {$nVar} variações de demonstração (produtos sem imagem foram inativados).\n";
 echo "  (sku_pai na faixa 9000x — remova antes de ir para produção)\n";
