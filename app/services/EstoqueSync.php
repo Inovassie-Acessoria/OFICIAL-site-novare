@@ -43,14 +43,25 @@ final class EstoqueSync
     /** @var callable():array<int,array<string,mixed>> */
     private $fetcher;
 
-    public function __construct(private readonly PDO $pdo, callable $fetcher)
+    /** @var (callable():PDO)|null abre uma conexão nova quando o MySQL derruba a atual */
+    private $reconectar;
+
+    public function __construct(private PDO $pdo, callable $fetcher, ?callable $reconectar = null)
     {
         $this->fetcher = $fetcher;
+        $this->reconectar = $reconectar;
     }
 
     public static function create(): self
     {
-        return new self(Database::connection(), static fn () => XBZService::fromEnv()->getListaDeProdutos(150));
+        return new self(
+            Database::connection(),
+            static fn () => XBZService::fromEnv()->getListaDeProdutos(150),
+            static function (): PDO {
+                Database::reset();
+                return Database::connection();
+            }
+        );
     }
 
     // ============================================================
@@ -81,6 +92,7 @@ final class EstoqueSync
                 $this->fechar($id, 'erro', 'Não consegui ler a XBZ: ' . $e->getMessage() . ' Nada foi alterado.');
                 return ['ok' => false, 'id' => $id, 'status' => 'erro', 'mensagem' => 'Não consegui ler a XBZ: ' . $e->getMessage()];
             }
+            $pdo = $this->pdo; // a leitura pode ter reaberto a conexão
 
             $plano = $this->planejar($leitura);
             $c = $plano['cont'];
@@ -144,6 +156,7 @@ final class EstoqueSync
             } catch (Throwable $e) {
                 return ['ok' => false, 'id' => $id, 'status' => 'simulada', 'mensagem' => 'A segunda leitura da XBZ falhou (' . $e->getMessage() . '). Nada foi alterado; tente aplicar de novo.'];
             }
+            $pdo = $this->pdo; // a leitura pode ter reaberto a conexão
 
             $planoA = $this->planejar($leituraA);
             $planoB = $this->planejar($leituraB);
@@ -288,7 +301,12 @@ final class EstoqueSync
      */
     private function ler(): array
     {
-        $itens = ($this->fetcher)();
+        try {
+            $itens = ($this->fetcher)();
+        } finally {
+            // a XBZ pode levar minutos; o MySQL da hospedagem derruba a conexão parada nesse meio-tempo
+            $this->reconectarSeCaiu();
+        }
         if (!is_array($itens) || count($itens) === 0) {
             throw new RuntimeException('a XBZ devolveu uma lista vazia.');
         }
@@ -321,6 +339,19 @@ final class EstoqueSync
             }
         }
         return ['m' => $m, 'i' => $inv, 'p' => $pais, 'total' => count($itens)];
+    }
+
+    /** Testa a conexão e abre outra se o servidor encerrou a atual ("MySQL server has gone away"). */
+    private function reconectarSeCaiu(): void
+    {
+        if ($this->reconectar === null) {
+            return;
+        }
+        try {
+            @$this->pdo->query('SELECT 1');
+        } catch (PDOException $e) {
+            $this->pdo = ($this->reconectar)();
+        }
     }
 
     private static function chave(string $s): string
