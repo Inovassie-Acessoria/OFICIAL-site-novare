@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/Database.php';
 require_once __DIR__ . '/Cache.php';
+require_once __DIR__ . '/Estoque.php';
 
 /**
  * Acesso a produtos: busca, filtro, paginação, página de produto.
@@ -76,7 +77,7 @@ final class ProductRepository
             $imgSelect = "COALESCE(
                 (SELECT i.url FROM variacoes vc
                  JOIN imagens i ON i.variacao_id = vc.id
-                 WHERE vc.produto_id = p.id AND vc.ativo = 1 AND vc.cor = :cor_img
+                 WHERE vc.produto_id = p.id AND vc.ativo = 1" . Estoque::sqlVariacao('vc') . " AND vc.cor = :cor_img
                  ORDER BY i.principal DESC, i.ordem ASC LIMIT 1),
                 p.imagem_principal
             ) AS imagem_principal";
@@ -143,6 +144,9 @@ final class ProductRepository
     private function construirWhere(array $f, ?string $excluir = null): array
     {
         $where  = ['p.ativo = 1', 'p.imagem_principal IS NOT NULL', "p.imagem_principal <> ''"];
+        if (Estoque::pronto()) {
+            $where[] = 'p.esgotado = 0'; // produto esgotado sai de listagem, busca e facetas
+        }
         $params = [];
         $boolean = '';
 
@@ -252,7 +256,7 @@ final class ProductRepository
         }
 
         if ($excluir !== 'cor' && !empty($f['cor'])) {
-            $where[] = 'EXISTS (SELECT 1 FROM variacoes v WHERE v.produto_id = p.id AND v.ativo = 1 AND v.cor = :cor)';
+            $where[] = 'EXISTS (SELECT 1 FROM variacoes v WHERE v.produto_id = p.id AND v.ativo = 1' . Estoque::sqlVariacao('v') . ' AND v.cor = :cor)';
             $params[':cor'] = (string) $f['cor'];
         }
 
@@ -366,7 +370,7 @@ final class ProductRepository
         $chave  = 'rel:' . md5($produto['sku_pai'] . '|' . $limite . '|' . (int) Seo::portaoAtivo());
         return Cache::remember($chave, self::TTL, function () use ($produto, $limite) {
             $where = "p.ativo = 1 AND p.imagem_principal IS NOT NULL AND p.imagem_principal <> ''
-                      AND p.categoria = :cat AND p.id <> :id";
+                      AND p.categoria = :cat AND p.id <> :id" . Estoque::sqlProduto('p');
             if (Seo::portaoAtivo()) {
                 $where .= ' AND p.seo_indexavel = 1';
             }
@@ -391,7 +395,7 @@ final class ProductRepository
         return (int) Cache::remember('catn:' . md5($nome), self::TTL, function () use ($nome) {
             $st = $this->pdo->prepare(
                 "SELECT COUNT(*) FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL
-                 AND imagem_principal <> '' AND categoria = :c"
+                 AND imagem_principal <> '' AND categoria = :c" . Estoque::sqlProduto()
             );
             $st->execute([':c' => $nome]);
             return (int) $st->fetchColumn();
@@ -410,9 +414,12 @@ final class ProductRepository
                 return null;
             }
 
+            // Cor esgotada some do seletor. Se o produto inteiro está esgotado, a
+            // página continua no ar (com aviso) e mostra as cores só para a galeria.
+            $soDisponiveis = empty($produto['esgotado']) ? Estoque::sqlVariacao('') : '';
             $stmtV = $this->pdo->prepare(
                 'SELECT id, sku_completo, cor_sufixo, cor, cor_codigo, estoque
-                 FROM variacoes WHERE produto_id = :pid AND ativo = 1 ORDER BY id'
+                 FROM variacoes WHERE produto_id = :pid AND ativo = 1' . $soDisponiveis . ' ORDER BY id'
             );
             $stmtV->execute([':pid' => $produto['id']]);
             $variacoes = $stmtV->fetchAll();
@@ -452,14 +459,14 @@ final class ProductRepository
                 $sql = "SELECT c.nome AS categoria, c.slug, c.seo_indexavel, COUNT(p.id) AS total
                         FROM categorias c
                         LEFT JOIN produtos p ON p.categoria = c.nome AND p.ativo = 1
-                             AND p.imagem_principal IS NOT NULL AND p.imagem_principal <> ''
+                             AND p.imagem_principal IS NOT NULL AND p.imagem_principal <> ''" . Estoque::sqlProduto('p') . "
                         GROUP BY c.id
                         HAVING total > 0
                         ORDER BY total DESC";
                 return $this->pdo->query($sql)->fetchAll();
             } catch (Throwable $e) {
                 $sql = 'SELECT categoria, NULL AS slug, 1 AS seo_indexavel, COUNT(*) AS total FROM produtos
-                        WHERE ativo = 1 AND categoria IS NOT NULL AND categoria <> ""
+                        WHERE ativo = 1 AND categoria IS NOT NULL AND categoria <> ""' . Estoque::sqlProduto() . '
                         GROUP BY categoria ORDER BY total DESC';
                 return $this->pdo->query($sql)->fetchAll();
             }
@@ -508,7 +515,7 @@ final class ProductRepository
             $sql = "SELECT v.cor AS cor, MIN(v.cor_codigo) AS hex, COUNT(DISTINCT v.produto_id) AS total
                     FROM variacoes v
                     JOIN produtos p ON p.id = v.produto_id
-                    WHERE v.ativo = 1 AND v.cor IS NOT NULL AND v.cor <> '' AND {$whereSql}
+                    WHERE v.ativo = 1" . Estoque::sqlVariacao('v') . " AND v.cor IS NOT NULL AND v.cor <> '' AND {$whereSql}
                     GROUP BY v.cor ORDER BY total DESC";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -522,7 +529,7 @@ final class ProductRepository
         return Cache::remember('faixa', self::TTL, function () {
             $row = $this->pdo->query(
                 'SELECT MIN(preco_base) AS min, MAX(preco_base) AS max
-                 FROM produtos WHERE ativo = 1 AND preco_base > 0'
+                 FROM produtos WHERE ativo = 1 AND preco_base > 0' . Estoque::sqlProduto()
             )->fetch();
             return [
                 'min' => (float) ($row['min'] ?? 0),
@@ -547,7 +554,7 @@ final class ProductRepository
             try {
                 // Linha de corte: 25% produtos ativos mais caros do catálogo
                 $sqlPreco = "SELECT preco_base FROM produtos 
-                             WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND preco_base > 0 
+                             WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND preco_base > 0 " . Estoque::sqlProduto() . "
                              ORDER BY preco_base DESC";
                 $precos = $this->pdo->query($sqlPreco)->fetchAll(PDO::FETCH_COLUMN);
                 $totalProdutos = count($precos);
@@ -557,7 +564,7 @@ final class ProductRepository
                     $precoCorte = (float) ($precos[$corteIndice - 1] ?? 0);
                     
                     $sqlSkus = "SELECT sku_pai FROM produtos 
-                                WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND preco_base >= :corte";
+                                WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND preco_base >= :corte" . Estoque::sqlProduto();
                     $stmtS = $this->pdo->prepare($sqlSkus);
                     $stmtS->execute([':corte' => $precoCorte]);
                     $skusQualificados = $stmtS->fetchAll(PDO::FETCH_COLUMN);
@@ -579,12 +586,12 @@ final class ProductRepository
         
         $skusSalvos = Settings::get('selecao_premium_skus', []);
         if (is_array($skusSalvos) && count($skusSalvos) > 0) {
-            return $this->porSkus($skusSalvos);
+            return $this->porSkus($skusSalvos, true);
         }
         
         return Cache::remember("dest:{$limite}", self::TTL, function () use ($limite) {
             $sql = "SELECT id, sku_pai, slug, nome, categoria, preco_base, sustentavel, imagem_principal, imagem_local
-                    FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''
+                    FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''" . Estoque::sqlProduto() . "
                     ORDER BY created_at DESC LIMIT {$limite}";
             return $this->pdo->query($sql)->fetchAll();
         });
@@ -596,9 +603,12 @@ final class ProductRepository
      * Usado pelo ranking manual do admin (arrastar/soltar) e pela busca por SKU.
      * Só retorna ativos com imagem.
      *
+     * $ocultarEsgotados: true nas vitrines do site (home, landings); false no
+     * painel e no blog, onde o produto citado continua aparecendo.
+     *
      * @param string[] $skus
      */
-    public function porSkus(array $skus): array
+    public function porSkus(array $skus, bool $ocultarEsgotados = false): array
     {
         $skus = array_values(array_filter(array_map(static fn ($s) => trim((string) $s), $skus), static fn ($s) => $s !== ''));
         if (!$skus) {
@@ -609,7 +619,7 @@ final class ProductRepository
         $sql  = "SELECT sku_pai, slug, nome, categoria, preco_base, sustentavel, imagem_principal, imagem_local
                  FROM produtos
                  WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''
-                   AND sku_pai IN ({$ph})";
+                   AND sku_pai IN ({$ph})" . ($ocultarEsgotados ? Estoque::sqlProduto() : '');
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($skus);
 

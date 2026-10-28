@@ -257,8 +257,8 @@ final class CatalogSync
                 }
             }
 
-            // Limpeza definitiva física de produtos sem imagem
-            $pdo->exec("DELETE FROM produtos WHERE imagem_principal IS NULL OR imagem_principal = '';");
+            // Produto sem imagem sai do site, mas NUNCA é apagado do banco (inativa)
+            $pdo->exec("UPDATE produtos SET ativo = 0 WHERE ativo = 1 AND (imagem_principal IS NULL OR imagem_principal = '')");
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {

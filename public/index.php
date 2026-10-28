@@ -56,6 +56,8 @@ if (!$ehLocal && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 
 // Schema/dados do pacote de SEO: cria o que falta no 1º request após o deploy.
 SeoMigration::garantir();
+// Colunas e tabelas de estoque (aditivo; filtros só ligam depois que existirem).
+Estoque::garantir();
 
 $controller = new CatalogController();
 
@@ -100,6 +102,12 @@ try {
             break;
         case $path === '/settings-admin/seo':
             (new AdminController())->seo();
+            break;
+        case $path === '/settings-admin/estoque':
+            (new AdminEstoqueController())->pagina();
+            break;
+        case $path === '/settings-admin/estoque/relatorio':
+            (new AdminEstoqueController())->relatorio();
             break;
 
         // ---- Site ----

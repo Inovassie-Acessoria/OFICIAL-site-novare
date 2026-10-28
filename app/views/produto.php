@@ -27,6 +27,9 @@ $catUrl     = $categoria_row ? Seo::urlCategoriaSlug($categoria_row['slug']) : S
 $prazoTxt   = Seo::prazoTexto($operacional['prazo']);
 $rotuloCat  = trim((string) ($categoria_row['rotulo_seo'] ?? '')) ?: (($catNome ?: 'Brindes') . ' Personalizados');
 $descPropria = trim((string) ($produto['descricao_propria'] ?? ''));
+// Esgotado (estoque abaixo do pedido mínimo em todas as cores): a página segue
+// no ar com aviso, fica noindex e sai das listagens até o estoque voltar.
+$esgotado   = !empty($produto['esgotado']);
 
 // payload para o JS (swatches trocam galeria/sku)
 $payload = array_map(static fn ($v) => [
@@ -109,6 +112,16 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                     <?php endif; ?>
                 </div>
 
+                <?php if ($esgotado): ?>
+                    <div class="bg-slate-50 border border-surface-container rounded-2xl p-4 mb-6 flex items-start gap-3 shadow-sm" role="status">
+                        <span class="material-symbols-outlined text-primary">inventory</span>
+                        <p class="text-sm text-secondary leading-relaxed">
+                            <strong class="text-on-surface font-black">Indisponível no momento.</strong>
+                            Este item está sem estoque no fornecedor. Chame no WhatsApp que indicamos um similar com o mesmo prazo, ou veja outros <a href="<?= e($catUrl) ?>" class="text-primary font-bold"><?= e(mb_strtolower($rotuloCat, 'UTF-8')) ?></a>.
+                        </p>
+                    </div>
+                <?php endif; ?>
+
                 <!-- BLOCO DE DECISÃO: as informações que o comprador B2B procura antes de chamar -->
                 <div class="bg-surface-container-low border border-surface-container rounded-2xl p-6 mb-6 shadow-sm">
                     <span class="text-[10px] text-slate-400 uppercase font-extrabold tracking-wider block mb-1">Preço sob consulta</span>
@@ -149,7 +162,7 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                         </span>
                     <?php endif; ?>
                     <span class="bg-white border border-surface-container px-3.5 py-1.5 rounded-xl text-xs font-semibold text-secondary flex items-center gap-1.5 shadow-sm">
-                        <span class="material-symbols-outlined text-sm">palette</span> <strong>Cores:</strong> <?= count($variacoes) ?>
+                        <span class="material-symbols-outlined text-sm">palette</span> <strong>Cores:</strong> <?= $esgotado ? 'indisponível' : count($variacoes) ?>
                     </span>
                 </div>
 
@@ -161,8 +174,8 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                     </div>
                 <?php endif; ?>
 
-                <!-- Swatches de cores -->
-                <?php if (count($variacoes) > 0): ?>
+                <!-- Swatches de cores (cor esgotada já vem fora; produto esgotado não mostra seletor) -->
+                <?php if (count($variacoes) > 0 && !$esgotado): ?>
                     <div class="mb-8 border-t border-surface-container/50 pt-6">
                         <h2 class="text-xs uppercase tracking-wider font-extrabold text-on-surface mb-3 flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-sm">palette</span> Cor Ativa: <span id="cor-ativa" class="text-primary font-bold lowercase"><?= e($primeira['cor'] ?? '') ?></span>
@@ -197,7 +210,7 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                     <tr><th scope="row" class="text-left px-5 py-3 font-bold text-on-surface bg-surface-container-low">Código</th><td class="px-5 py-3 text-secondary"><?= e($produto['sku_pai']) ?></td></tr>
                     <?php if ($catNome): ?><tr><th scope="row" class="text-left px-5 py-3 font-bold text-on-surface bg-surface-container-low">Categoria</th><td class="px-5 py-3 text-secondary"><a class="text-primary hover:underline" href="<?= e($catUrl) ?>"><?= e($catNome) ?></a></td></tr><?php endif; ?>
                     <?php if (!empty($produto['material'])): ?><tr><th scope="row" class="text-left px-5 py-3 font-bold text-on-surface bg-surface-container-low">Material</th><td class="px-5 py-3 text-secondary"><?= e($produto['material']) ?></td></tr><?php endif; ?>
-                    <tr><th scope="row" class="text-left px-5 py-3 font-bold text-on-surface bg-surface-container-low">Cores disponíveis</th><td class="px-5 py-3 text-secondary"><?= e(implode(', ', array_unique(array_map(static fn ($v) => (string) $v['cor'], $variacoes)))) ?: '—' ?></td></tr>
+                    <tr><th scope="row" class="text-left px-5 py-3 font-bold text-on-surface bg-surface-container-low">Cores disponíveis</th><td class="px-5 py-3 text-secondary"><?= $esgotado ? 'Indisponível no momento' : (e(implode(', ', array_unique(array_map(static fn ($v) => (string) $v['cor'], $variacoes)))) ?: '—') ?></td></tr>
                     <?php if ($qtd_minima): ?><tr><th scope="row" class="text-left px-5 py-3 font-bold text-on-surface bg-surface-container-low">Quantidade mínima</th><td class="px-5 py-3 text-secondary"><?= (int) $qtd_minima ?> unidades</td></tr><?php endif; ?>
                     <?php if ($prazoTxt): ?><tr><th scope="row" class="text-left px-5 py-3 font-bold text-on-surface bg-surface-container-low">Prazo de produção</th><td class="px-5 py-3 text-secondary"><?= e($prazoTxt) ?> após aprovação da arte</td></tr><?php endif; ?>
                     <?php if ($operacional['tecnicas']): ?><tr><th scope="row" class="text-left px-5 py-3 font-bold text-on-surface bg-surface-container-low">Personalização</th><td class="px-5 py-3 text-secondary"><?= e($operacional['tecnicas']) ?></td></tr><?php endif; ?>

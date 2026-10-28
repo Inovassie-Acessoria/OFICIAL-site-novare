@@ -98,8 +98,8 @@ foreach ($demo as [$sku, $nome, $desc, $cat, $mat, $preco, $qmin, $sus, $sufixos
     }
 }
 
-// Remove produtos órfãos ou sem imagem principal
-$pdo->exec("DELETE FROM produtos WHERE imagem_principal IS NULL OR imagem_principal = '';");
+// Nunca apaga produto do banco: sem imagem = inativo
+$pdo->exec("UPDATE produtos SET ativo = 0 WHERE ativo = 1 AND (imagem_principal IS NULL OR imagem_principal = '')");
 $pdo->commit();
 
 echo "✓ Seed concluído: {$nProd} produtos-pai e {$nVar} variações de demonstração (produtos sem imagem foram limpos).\n";

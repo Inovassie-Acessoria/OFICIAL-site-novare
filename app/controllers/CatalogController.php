@@ -330,7 +330,7 @@ final class CatalogController
             return false;
         }
         $skus = array_values(array_filter(array_map('trim', explode(',', (string) ($oc['produtos_skus'] ?? '')))));
-        $produtos = $skus ? $this->repo->porSkus($skus) : [];
+        $produtos = $skus ? $this->repo->porSkus($skus, true) : [];
         $faq = Seo::faq('ocasiao', $oc['slug'], 6, false);
 
         $catsRel = [];

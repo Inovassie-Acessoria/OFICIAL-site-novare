@@ -345,6 +345,10 @@ final class Seo
         if (empty($p['ativo']) || empty($p['imagem_principal'])) {
             return false;
         }
+        // esgotado: a página continua abrindo (com aviso), mas sai do índice até voltar
+        if (!empty($p['esgotado'])) {
+            return false;
+        }
         if (!self::portaoAtivo()) {
             return true;
         }

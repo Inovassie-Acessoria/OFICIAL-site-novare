@@ -52,7 +52,37 @@ foreach ($tops as $chave => $info) {
         <a href="#top_garrafas" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300">Top Garrafas</a>
         <a href="#top_mochilas" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300">Top Mochilas</a>
         <a href="/settings-admin/seo" class="px-3 py-1.5 rounded-full bg-sky-700 hover:bg-sky-600 text-white flex items-center gap-1"><span class="material-symbols-outlined text-xs">travel_explore</span> SEO</a>
+        <a href="/settings-admin/estoque" class="px-3 py-1.5 rounded-full bg-sky-700 hover:bg-sky-600 text-white flex items-center gap-1"><span class="material-symbols-outlined text-xs">inventory_2</span> Estoque</a>
     </nav>
+
+    <!-- ============ ESTOQUE DO CATÁLOGO ============ -->
+    <?php
+    $ultEstoque = null;
+    try {
+        if (Estoque::pronto()) {
+            $ultEstoque = Database::connection()->query("SELECT id, aplicado_em, saem, voltam FROM catalogo_atualizacoes WHERE status = 'aplicada' ORDER BY id DESC LIMIT 1")->fetch() ?: null;
+        }
+    } catch (Throwable $e) {
+        $ultEstoque = null;
+    }
+    ?>
+    <section id="estoque" class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
+        <h2 class="text-lg font-black text-white flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-sky-400">inventory_2</span> Estoque do catálogo</h2>
+        <p class="text-xs text-slate-400 mb-4">
+            <?php if ($ultEstoque): ?>
+                Última atualização em <?= e(date('d/m/Y H:i', strtotime((string) $ultEstoque['aplicado_em']))) ?>: <?= (int) $ultEstoque['saem'] ?> produtos saíram e <?= (int) $ultEstoque['voltam'] ?> voltaram.
+            <?php else: ?>
+                Nenhuma atualização de estoque aplicada ainda.
+            <?php endif; ?>
+            Primeiro o sistema confere a XBZ e mostra o que mudaria; nada muda no site até você aplicar.
+        </p>
+        <form method="post" action="/settings-admin/estoque" class="flex flex-wrap items-center gap-3" onsubmit="this.querySelector('button').disabled=true;this.querySelector('span[data-aguarde]').hidden=false">
+            <input type="hidden" name="csrf" value="<?= e($csrf) ?>"><input type="hidden" name="acao" value="simular">
+            <button class="inline-flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-4 py-2 rounded-lg"><span class="material-symbols-outlined text-sm">sync</span> Atualizar estoque</button>
+            <a href="/settings-admin/estoque" class="text-xs text-sky-400">Histórico e relatórios</a>
+            <span data-aguarde hidden class="text-xs text-slate-400">Lendo a XBZ, pode levar até 2 minutos.</span>
+        </form>
+    </section>
 
     <!-- ============ 1) LOGO ============ -->
     <section id="logo" class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">

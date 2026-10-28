@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/Settings.php';
 require_once __DIR__ . '/Seo.php';
+require_once __DIR__ . '/Estoque.php';
 
 /**
  * IndexNow: avisa Bing, Yandex e Seznam que URLs mudaram (indexação em
@@ -88,7 +89,7 @@ final class IndexNow
         $urls = [];
         $sql = "SELECT slug, sku_pai FROM produtos
                 WHERE ativo = 1 AND slug IS NOT NULL AND imagem_principal IS NOT NULL AND imagem_principal <> ''
-                  AND conteudo_alterado_em >= :d";
+                  AND conteudo_alterado_em >= :d" . Estoque::sqlProduto();
         if (Seo::portaoAtivo()) {
             $sql .= ' AND seo_indexavel = 1';
         }

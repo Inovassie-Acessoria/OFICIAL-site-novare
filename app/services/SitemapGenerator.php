@@ -73,7 +73,7 @@ final class SitemapGenerator
                     "SELECT c.slug, c.updated_at, COUNT(p.id) AS total
                      FROM categorias c
                      LEFT JOIN produtos p ON p.categoria = c.nome AND p.ativo = 1
-                          AND p.imagem_principal IS NOT NULL AND p.imagem_principal <> ''
+                          AND p.imagem_principal IS NOT NULL AND p.imagem_principal <> ''" . Estoque::sqlProduto('p') . "
                      WHERE c.seo_indexavel = 1
                      GROUP BY c.id HAVING total >= 8
                      ORDER BY c.ordem"
@@ -122,7 +122,7 @@ final class SitemapGenerator
         $pdo  = Database::connection();
         $repo = ProductRepository::create();
         $op   = Seo::operacional();
-        $totalProd = (int) $pdo->query("SELECT COUNT(*) FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''")->fetchColumn();
+        $totalProd = (int) $pdo->query("SELECT COUNT(*) FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''" . Estoque::sqlProduto())->fetchColumn();
         $h = Seo::host();
 
         $l = [];
@@ -175,7 +175,8 @@ final class SitemapGenerator
 
     private static function sqlProdutos(string $select): string
     {
-        $sql = "SELECT {$select} FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND slug IS NOT NULL";
+        // produto esgotado fica noindex (Seo::produtoIndexavel), então sai do sitemap
+        $sql = "SELECT {$select} FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND slug IS NOT NULL" . Estoque::sqlProduto();
         if (Seo::portaoAtivo()) {
             $sql .= ' AND seo_indexavel = 1';
         }

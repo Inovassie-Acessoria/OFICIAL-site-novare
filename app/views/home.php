@@ -10,22 +10,22 @@
 $pdo = Database::connection();
 
 // Consulta otimizada para buscar a imagem de um produto real para os círculos de categorias
-$stmtImg = $pdo->prepare("SELECT imagem_principal FROM produtos WHERE categoria = :cat AND ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' LIMIT 1");
+$stmtImg = $pdo->prepare("SELECT imagem_principal FROM produtos WHERE categoria = :cat AND ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''" . Estoque::sqlProduto() . " LIMIT 1");
 
 // Top 10 Canetas (Escrita)
-$stmtCanetas = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'Canetas' OR nome LIKE '%caneta%' OR nome LIKE '%lapiseira%' OR nome LIKE '%roller%') ORDER BY id ASC LIMIT 10");
+$stmtCanetas = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''" . Estoque::sqlProduto() . " AND (categoria = 'Canetas' OR nome LIKE '%caneta%' OR nome LIKE '%lapiseira%' OR nome LIKE '%roller%') ORDER BY id ASC LIMIT 10");
 $topCanetas = $stmtCanetas->fetchAll();
 
 // Top 10 Cadernos / Agendas / Moleskine
-$stmtCadernos = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'Moleskine & Cadernos' OR nome LIKE '%caderno%' OR nome LIKE '%caderneta%' OR nome LIKE '%agenda%' OR nome LIKE '%moleskine%' OR nome LIKE '%planner%') ORDER BY id ASC LIMIT 10");
+$stmtCadernos = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''" . Estoque::sqlProduto() . " AND (categoria = 'Moleskine & Cadernos' OR nome LIKE '%caderno%' OR nome LIKE '%caderneta%' OR nome LIKE '%agenda%' OR nome LIKE '%moleskine%' OR nome LIKE '%planner%') ORDER BY id ASC LIMIT 10");
 $topCadernos = $stmtCadernos->fetchAll();
 
 // Top 10 Garrafas
-$stmtGarrafas = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'GARRAFAS E SQUEEZES' OR nome LIKE '%garrafa%' OR nome LIKE '%squeeze%') ORDER BY id ASC LIMIT 10");
+$stmtGarrafas = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''" . Estoque::sqlProduto() . " AND (categoria = 'GARRAFAS E SQUEEZES' OR nome LIKE '%garrafa%' OR nome LIKE '%squeeze%') ORDER BY id ASC LIMIT 10");
 $topGarrafas = $stmtGarrafas->fetchAll();
 
 // Top 10 Mochilas
-$stmtMochilas = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' AND (categoria = 'BOLSAS E MOCHILAS' OR nome LIKE '%mochila%') ORDER BY id ASC LIMIT 10");
+$stmtMochilas = $pdo->query("SELECT sku_pai, slug, nome, preco_base, imagem_principal, imagem_local, categoria FROM produtos WHERE ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''" . Estoque::sqlProduto() . " AND (categoria = 'BOLSAS E MOCHILAS' OR nome LIKE '%mochila%') ORDER BY id ASC LIMIT 10");
 $topMochilas = $stmtMochilas->fetchAll();
 
 // Ranking MANUAL do painel admin tem prioridade (arrastar/soltar por SKU).
@@ -34,7 +34,7 @@ $repoTops = ProductRepository::create();
 foreach (['top_canetas' => 'topCanetas', 'top_cadernos' => 'topCadernos', 'top_garrafas' => 'topGarrafas', 'top_mochilas' => 'topMochilas'] as $chaveCfg => $var) {
     $skusManuais = SiteContent::topSkus($chaveCfg);
     if ($skusManuais) {
-        $manual = $repoTops->porSkus($skusManuais);
+        $manual = $repoTops->porSkus($skusManuais, true);
         if ($manual) {
             $$var = $manual;
         }
@@ -101,7 +101,7 @@ if ($categorias) {
                 $imgCat = asset('images/cat_carteiras.png');
             } elseif (strtoupper($nomeCat) === 'BOLSAS E MOCHILAS') {
                 // Força imagem que contenha mochila no nome para a categoria correspondente
-                $stmtImgMochila = $pdo->prepare("SELECT imagem_principal FROM produtos WHERE categoria = 'BOLSAS E MOCHILAS' AND nome LIKE '%mochila%' AND ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> '' LIMIT 1");
+                $stmtImgMochila = $pdo->prepare("SELECT imagem_principal FROM produtos WHERE categoria = 'BOLSAS E MOCHILAS' AND nome LIKE '%mochila%' AND ativo = 1 AND imagem_principal IS NOT NULL AND imagem_principal <> ''" . Estoque::sqlProduto() . " LIMIT 1");
                 $stmtImgMochila->execute();
                 $imgCat = $stmtImgMochila->fetchColumn();
             } else {
