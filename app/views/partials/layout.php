@@ -63,6 +63,9 @@ if (!empty($meta['faq'])) {
 // CSS compilado (Tailwind estático) com hash de conteúdo para cache de 1 ano
 $cssFile = APP_ROOT . '/public/assets/css/app.css';
 $cssVer  = is_file($cssFile) ? substr(md5_file($cssFile) ?: '', 0, 8) : '1';
+// Mesmo esquema para o JS (servido com cache "immutable" de 1 ano pelo .htaccess)
+$jsFile  = APP_ROOT . '/public/assets/js/novare.js';
+$jsVer   = is_file($jsFile) ? substr(md5_file($jsFile) ?: '', 0, 8) : '1';
 $catAtualSlug = $categoria_atual['slug'] ?? null;
 $entidade = Settings::get('seo_entidade', []);
 $entidade = is_array($entidade) ? $entidade : [];
@@ -285,6 +288,6 @@ $entidade = is_array($entidade) ? $entidade : [];
 
     <?php partial('chat'); ?>
 
-    <script src="<?= asset('js/novare.js') ?>" defer></script>
+    <script src="<?= asset('js/novare.js') ?>?v=<?= $jsVer ?>" defer></script>
 </body>
 </html>

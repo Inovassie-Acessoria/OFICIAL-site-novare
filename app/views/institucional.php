@@ -33,6 +33,20 @@ $conteudos = [
     ],
 ];
 $c = $conteudos[$pagina] ?? $conteudos['sobre'];
+
+// Catálogo em PDF: o botão só aparece na página "Sobre" e só se o arquivo existir em public/.
+// Para atualizar o catálogo basta substituir o arquivo — o ?v= muda sozinho e fura o cache.
+$catalogo = null;
+if ($pagina === 'sobre') {
+    $catalogoArq = 'assets/catalogo/catalogo-novare-brindes.pdf';
+    $catalogoAbs = APP_ROOT . '/public/' . $catalogoArq;
+    if (is_file($catalogoAbs)) {
+        $catalogo = [
+            'url'     => url($catalogoArq) . '?v=' . filemtime($catalogoAbs),
+            'tamanho' => number_format(filesize($catalogoAbs) / 1048576, 1, ',', '.') . ' MB',
+        ];
+    }
+}
 ?>
 <div class="max-w-7xl mx-auto px-6 py-8">
     <!-- Breadcrumbs -->
@@ -54,6 +68,15 @@ $c = $conteudos[$pagina] ?? $conteudos['sobre'];
                 <span class="text-white/80 font-black uppercase tracking-[0.2em] text-[10px] mb-3 block">Novare Brindes B2B</span>
                 <h1 class="text-3xl md:text-4xl font-black tracking-tighter mb-4"><?= e($c['titulo']) ?></h1>
                 <p class="text-sm text-white/90 leading-relaxed font-medium"><?= e($c['lead']) ?></p>
+                <?php if ($catalogo): ?>
+                    <div class="mt-8 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+                        <a id="btn-catalogo-pdf" href="<?= e($catalogo['url']) ?>" download="catalogo-novare-brindes.pdf" data-evento="download_catalogo" class="bg-white text-primary px-7 py-4 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg hover:bg-surface-container-low transition-colors inline-flex items-center justify-center gap-2.5 whitespace-nowrap">
+                            <span class="material-symbols-outlined text-lg" aria-hidden="true">download</span>
+                            Baixar catálogo
+                        </a>
+                        <span class="text-[11px] text-white/80 font-medium leading-relaxed">Todos os produtos por categoria, com fotos, cores, medidas e quantidade mínima. <span class="whitespace-nowrap">PDF · <?= e($catalogo['tamanho']) ?></span></span>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </section>

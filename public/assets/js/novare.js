@@ -478,6 +478,18 @@
         }
     });
 
+    /* ---------- Download do catálogo em PDF (página Sobre) ---------- */
+    document.addEventListener('click', function (e) {
+        const link = e.target.closest('a[data-evento="download_catalogo"]');
+        if (!link) return;
+        pushEvent('download_catalogo', {
+            button_id: link.id || 'catalogo-pdf',
+            file_name: 'catalogo-novare-brindes.pdf',
+            link_url: link.href,
+            page_location: window.location.href
+        });
+    });
+
     /* ---------- Formulário de Newsletter (Envio Assíncrono com Feedback Verde) ---------- */
     const newsForm = document.getElementById('newsletter-form');
     const newsSuccess = document.getElementById('newsletter-success');
