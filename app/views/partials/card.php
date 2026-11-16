@@ -6,8 +6,9 @@
 $img  = $p['imagem_local'] ?? '';
 $img  = $img !== '' && $img !== null ? $img : ($p['imagem_principal'] ?? '');
 $nome = Seo::nomeLegivel((string) $p['nome']);
+$pers = Seo::personalizado($nome, false);
 ?>
-<a class="group flex flex-col bg-white border border-surface-container rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/10 transition-all duration-300 h-full" href="<?= e(Seo::urlProduto($p)) ?>" title="<?= e($nome) ?> personalizado">
+<a class="group flex flex-col bg-white border border-surface-container rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/10 transition-all duration-300 h-full" href="<?= e(Seo::urlProduto($p)) ?>" title="<?= e($nome) ?> <?= $pers ?>">
     <div class="relative w-full aspect-square bg-slate-50 flex items-center justify-center p-6 overflow-hidden border-b border-surface-container/50 flex-shrink-0">
         <?php if (!empty($p['sustentavel'])): ?>
             <span class="absolute top-3 left-3 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-sm z-10 flex items-center gap-1">
@@ -15,7 +16,7 @@ $nome = Seo::nomeLegivel((string) $p['nome']);
             </span>
         <?php endif; ?>
         <?php if ($img !== ''): ?>
-            <img class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500" src="<?= e($img) ?>" alt="<?= e($nome) ?> personalizado com logo" loading="lazy" decoding="async" width="240" height="240">
+            <img class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500" src="<?= e($img) ?>" alt="<?= e($nome) ?> <?= $pers ?> com logo" loading="lazy" decoding="async" width="240" height="240">
         <?php else: ?>
             <div class="text-xs text-slate-400 flex flex-col items-center gap-2">
                 <span class="material-symbols-outlined text-2xl">image_not_supported</span>
@@ -31,7 +32,7 @@ $nome = Seo::nomeLegivel((string) $p['nome']);
             <?php if (!empty($p['categoria'])): ?>
                 <span class="text-[9px] font-bold text-primary uppercase tracking-widest block mb-1"><?= e($p['categoria']) ?></span>
             <?php endif; ?>
-            <h3 class="text-xs font-bold text-on-surface group-hover:text-primary transition-colors leading-snug"><?= e($nome) ?> <span class="font-medium text-slate-500">Personalizado</span></h3>
+            <h3 class="text-xs font-bold text-on-surface group-hover:text-primary transition-colors leading-snug"><?= e($nome) ?> <span class="font-medium text-slate-500"><?= ucfirst($pers) ?></span></h3>
         </div>
         <div class="flex items-center justify-between pt-3 border-t border-surface-container-low mt-auto w-full">
             <span class="text-[10px] font-bold text-slate-500 group-hover:text-primary transition-colors uppercase tracking-wider flex items-center gap-1">

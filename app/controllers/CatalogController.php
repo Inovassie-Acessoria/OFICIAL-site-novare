@@ -134,9 +134,11 @@ final class CatalogController
         if ($faceta) {
             $h1    = "{$nomeCat} de {$faceta['valor_label']}: {$rotulo} com Logo";
             $title = "{$nomeCat} de {$faceta['valor_label']} — {$rotulo}";
+            // mesmo gênero do rótulo da categoria ("Canetas Personalizadas" -> personalizadas)
+            $persCat = preg_match('/personalizad[oa]s/iu', $rotulo, $mg) ? mb_strtolower($mg[0], 'UTF-8') : 'personalizados';
             $desc  = $faceta['seo_description'] ?? sprintf(
-                '%s de %s personalizados com a logo da sua empresa. %d modelos com quantidade mínima a partir de 20 unidades. Orçamento pelo WhatsApp na Novare Brindes.',
-                $nomeCat, $faceta['valor_label'], $total
+                '%s de %s %s com a logo da sua empresa. %d modelos, pedido mínimo informado em cada produto. Orçamento pelo WhatsApp na Novare Brindes.',
+                $nomeCat, $faceta['valor_label'], $persCat, $total
             );
             $intro = $faceta['intro_seo'] ?? '';
             $entidadeFaq = ['faceta', $cat['slug'] . '/' . $faceta['atributo'] . '/' . $faceta['valor_slug']];
@@ -145,8 +147,8 @@ final class CatalogController
             $h1    = "{$rotulo} com Logo";
             $title = $cat['seo_title'] ?: $rotulo;
             $desc  = $cat['seo_description'] ?: sprintf(
-                '%s personalizados com a logo da sua empresa: %d modelos, quantidade mínima a partir de 20 unidades e orçamento rápido pelo WhatsApp. Novare Brindes, entrega para todo o Brasil.',
-                $nomeCat, $total
+                '%s com a logo da sua empresa: %d modelos, pedido mínimo informado em cada produto e orçamento rápido pelo WhatsApp. Novare Brindes, entrega para todo o Brasil.',
+                $rotulo, $total
             );
             $intro = (string) ($cat['intro_seo'] ?? '');
             $entidadeFaq = ['categoria', $cat['slug']];
@@ -276,8 +278,9 @@ final class CatalogController
 
         $qtd  = (int) ($p['quantidade_minima'] ?? 0) ?: ProductMapper::quantidadeMinima($p['preco_base'] ?? null);
         $desc = $p['seo_description'] ?: sprintf(
-            '%s personalizado com a logo da sua empresa.%s%s Orçamento rápido pelo WhatsApp na Novare Brindes.',
+            '%s %s com a logo da sua empresa.%s%s Orçamento rápido pelo WhatsApp na Novare Brindes.',
             $nomeLegivel,
+            Seo::personalizado($nomeLegivel, false),
             $qtd ? " Pedido mínimo de {$qtd} unidades." : '',
             $op['prazo'] ? ' Produção em ' . Seo::prazoTexto($op['prazo']) . ' após aprovação da arte.' : ''
         );
@@ -305,7 +308,7 @@ final class CatalogController
             'schemas'     => [Seo::schemaProduct($p, $imagens, $cat['nome'] ?? null, $op)],
         ];
 
-        $titulo = $p['seo_title'] ?: ($nomeLegivel . ' Personalizado');
+        $titulo = $p['seo_title'] ?: ($nomeLegivel . ' ' . Seo::personalizado($nomeLegivel));
 
         view('produto', $dados + [
             'nome_legivel' => $nomeLegivel,

@@ -291,6 +291,30 @@ final class Seo
         return $t;
     }
 
+    /**
+     * "Personalizado" ou "Personalizada" concordando com o substantivo principal
+     * do nome ("Caneta Metal" -> Personalizada, "Kit Vinho" -> Personalizado).
+     * Regra: 1ª palavra relevante; termina em "a" = feminino, salvo exceções.
+     */
+    public static function personalizado(string $nome, bool $maiuscula = true): string
+    {
+        $palavras = preg_split('/[^a-z]+/', strtolower(ProductMapper::normalizar($nome)), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $ignorar  = ['mini', 'super', 'novo', 'nova'];
+        $nucleo   = '';
+        foreach ($palavras as $w) {
+            if (!in_array($w, $ignorar, true)) {
+                $nucleo = $w;
+                break;
+            }
+        }
+        $masculinos = ['porta', 'guarda', 'mapa', 'pijama', 'sofa', 'dia', 'tema', 'planeta'];
+        $femininos  = ['necessaire', 'nessessaire', 'ecobag', 'bag', 'pochete', 'chave', 'base', 'lancheira'];
+        $fem = in_array($nucleo, $femininos, true)
+            || (str_ends_with($nucleo, 'a') && !in_array($nucleo, $masculinos, true));
+        $s = $fem ? 'personalizada' : 'personalizado';
+        return $maiuscula ? ucfirst($s) : $s;
+    }
+
     // ============================================================
     // DADOS OPERACIONAIS (globais no admin, override por produto)
     // ============================================================
@@ -455,7 +479,7 @@ final class Seo
             '@context'    => 'https://schema.org',
             '@type'       => 'Product',
             '@id'         => $url . '#product',
-            'name'        => $nome . ' Personalizado',
+            'name'        => $nome . ' ' . self::personalizado($nome),
             'description' => self::truncar($desc, 300),
             'sku'         => (string) $p['sku_pai'],
             'image'       => array_values(array_map(static fn ($i) => str_starts_with($i, 'http') ? $i : urlAbsoluta($i), array_slice($imagens, 0, 6))),

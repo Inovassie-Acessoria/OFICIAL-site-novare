@@ -22,6 +22,7 @@ $urlProduto = Seo::canonical($url_produto);
 $primeira   = $variacoes[0] ?? null;
 $imgInicial = $produto['imagem_local'] ?: ($primeira['imagens'][0] ?? ($produto['imagem_principal'] ?? ''));
 $nome       = $nome_legivel;
+$pers       = Seo::personalizado($nome, false);
 $catNome    = $categoria_row['nome'] ?? ($produto['categoria'] ?? null);
 $catUrl     = $categoria_row ? Seo::urlCategoriaSlug($categoria_row['slug']) : Seo::urlHub();
 $prazoTxt   = Seo::prazoTexto($operacional['prazo']);
@@ -74,7 +75,7 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                     </span>
                 <?php endif; ?>
                 <?php if ($imgInicial !== ''): ?>
-                    <img id="gallery-img" class="max-h-full max-w-full object-contain transition-all duration-300" src="<?= e($imgInicial) ?>" alt="<?= e($nome) ?><?= !empty($produto['material']) ? ' de ' . e(mb_strtolower($produto['material'], 'UTF-8')) : '' ?> personalizado com logo" width="520" height="520" fetchpriority="high" decoding="async">
+                    <img id="gallery-img" class="max-h-full max-w-full object-contain transition-all duration-300" src="<?= e($imgInicial) ?>" alt="<?= e($nome) ?><?= !empty($produto['material']) ? ' de ' . e(mb_strtolower($produto['material'], 'UTF-8')) : '' ?> <?= $pers ?> com logo" width="520" height="520" fetchpriority="high" decoding="async">
                 <?php else: ?>
                     <div class="text-slate-400 flex flex-col items-center gap-2">
                         <span class="material-symbols-outlined text-4xl">image_not_supported</span>
@@ -100,7 +101,7 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                 <?php endif; ?>
 
                 <!-- H1 único: próximo do title, não idêntico -->
-                <h1 class="text-3xl font-black text-on-surface tracking-tighter leading-tight mb-2"><?= e($nome) ?> <span class="text-primary">Personalizado com Logo</span></h1>
+                <h1 class="text-3xl font-black text-on-surface tracking-tighter leading-tight mb-2"><?= e($nome) ?> <span class="text-primary"><?= ucfirst($pers) ?> com Logo</span></h1>
 
                 <div class="text-xs text-slate-400 font-medium mb-6 flex flex-wrap gap-x-4 gap-y-1">
                     <span>Cód. base: <strong class="text-secondary font-semibold"><?= e($produto['sku_pai']) ?></strong></span>
@@ -169,7 +170,7 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
                 <!-- CONTEÚDO PRÓPRIO: vem ANTES da descrição do fornecedor -->
                 <?php if ($descPropria !== ''): ?>
                     <div class="mb-8">
-                        <h2 class="text-xs uppercase tracking-wider font-extrabold text-on-surface mb-3 border-l-2 border-primary pl-2.5">Sobre <?= e(mb_strtolower($nome, 'UTF-8')) ?> personalizado</h2>
+                        <h2 class="text-xs uppercase tracking-wider font-extrabold text-on-surface mb-3 border-l-2 border-primary pl-2.5">Sobre <?= e(mb_strtolower($nome, 'UTF-8')) ?> <?= $pers ?></h2>
                         <div class="text-secondary text-sm leading-relaxed"><?= nl2br(e(strip_tags($descPropria, '<b><strong><em><i><br><p><ul><ol><li>'))) ?></div>
                     </div>
                 <?php endif; ?>
@@ -230,7 +231,7 @@ $ehTop1 = ($top1Sku !== '' && $produto['sku_pai'] === $top1Sku);
     <?php endif; ?>
 
     <!-- Blocos de resposta direta (mesmas perguntas do schema FAQPage) -->
-    <?php partial('faq', ['faq' => $faq, 'titulo' => 'Perguntas frequentes sobre ' . mb_strtolower($nome, 'UTF-8') . ' personalizado']); ?>
+    <?php partial('faq', ['faq' => $faq, 'titulo' => 'Perguntas frequentes sobre ' . mb_strtolower($nome, 'UTF-8') . ' ' . $pers]); ?>
 
     <!-- Relacionados com critério: mesma categoria, quantidade mínima parecida. Âncora descritiva. -->
     <?php if (!empty($relacionados)): ?>

@@ -127,7 +127,7 @@ $taxa = $stats && $stats['avaliados'] ? round($stats['indexaveis'] / $stats['ava
                 <input type="hidden" name="id" value="<?= (int) $produto['id'] ?>">
                 <label class="text-xs text-slate-300 sm:col-span-3">Descrição própria (vem ANTES da descrição da XBZ; mínimo 60 palavras para passar no portão)
                     <textarea name="descricao_propria" rows="7" class="<?= $inp ?> mt-1"><?= e($produto['descricao_propria'] ?? '') ?></textarea></label>
-                <label class="text-xs text-slate-300 sm:col-span-2">Title (máx. 60; vazio = "<?= e(Seo::nomeLegivel($produto['nome'])) ?> Personalizado")<input name="seo_title" maxlength="70" value="<?= e($produto['seo_title'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
+                <label class="text-xs text-slate-300 sm:col-span-2">Title (máx. 60; vazio = "<?= e(Seo::nomeLegivel($produto['nome']) . ' ' . Seo::personalizado(Seo::nomeLegivel($produto['nome']))) ?>")<input name="seo_title" maxlength="70" value="<?= e($produto['seo_title'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
                 <label class="text-xs text-slate-300">Prazo (override)<input name="prazo_producao" value="<?= e($produto['prazo_producao'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
                 <label class="text-xs text-slate-300 sm:col-span-3">Meta description (máx. 158)<input name="seo_description" maxlength="180" value="<?= e($produto['seo_description'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
                 <label class="text-xs text-slate-300 sm:col-span-2">Técnicas (override)<input name="tecnicas_personalizacao" value="<?= e($produto['tecnicas_personalizacao'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
