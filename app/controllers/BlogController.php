@@ -122,8 +122,16 @@ final class BlogController
     // Usados também pelo sitemap, pelo llms.txt e pelo admin
     // ============================================================
 
-    /** SQL do que está no ar. Mesmo critério em todo lugar (página, sitemap, llms.txt). */
-    public const WHERE_PUBLICADO = "status = 'publicado' AND publicado_em IS NOT NULL AND publicado_em <= NOW()";
+    /**
+     * SQL do que está no ar. Mesmo critério em todo lugar (página, lista, sitemap, llms.txt).
+     * Compara com o relógio do PHP — o mesmo que grava publicado_em no painel e que a
+     * página da matéria usa. O NOW() do MySQL pode estar em outro fuso na hospedagem,
+     * e aí a lista e o sitemap divulgariam uma matéria que ainda dá 404 (ou o contrário).
+     */
+    public static function wherePublicado(): string
+    {
+        return "status = 'publicado' AND publicado_em IS NOT NULL AND publicado_em <= '" . date('Y-m-d H:i:s') . "'";
+    }
 
     /**
      * Texto do campo FAQ do painel -> [['pergunta','resposta'], ...].
@@ -213,7 +221,7 @@ final class BlogController
     private function contarPublicados(): int
     {
         try {
-            return (int) Database::connection()->query('SELECT COUNT(*) FROM blog_posts WHERE ' . self::WHERE_PUBLICADO)->fetchColumn();
+            return (int) Database::connection()->query('SELECT COUNT(*) FROM blog_posts WHERE ' . self::wherePublicado())->fetchColumn();
         } catch (Throwable $e) {
             return 0;
         }
@@ -224,7 +232,7 @@ final class BlogController
         try {
             return Database::connection()->query(
                 'SELECT id, slug, titulo, resumo, produtos_skus, imagem_capa, imagem_alt, publicado_em, updated_at FROM blog_posts WHERE '
-                . self::WHERE_PUBLICADO . ' ORDER BY publicado_em DESC, id DESC LIMIT ' . $limite . ' OFFSET ' . $offset
+                . self::wherePublicado() . ' ORDER BY publicado_em DESC, id DESC LIMIT ' . $limite . ' OFFSET ' . $offset
             )->fetchAll();
         } catch (Throwable $e) {
             return [];
@@ -236,7 +244,7 @@ final class BlogController
         try {
             $st = Database::connection()->prepare(
                 'SELECT id, slug, titulo, resumo, produtos_skus, imagem_capa, imagem_alt, publicado_em FROM blog_posts WHERE '
-                . self::WHERE_PUBLICADO . ' AND id <> :id ORDER BY publicado_em DESC LIMIT ' . $limite
+                . self::wherePublicado() . ' AND id <> :id ORDER BY publicado_em DESC LIMIT ' . $limite
             );
             $st->execute([':id' => $id]);
             $rows = $st->fetchAll();

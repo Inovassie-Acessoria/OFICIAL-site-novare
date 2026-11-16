@@ -42,8 +42,8 @@ final class SitemapGenerator
         if (self::conta($pdo, 'seo_ocasioes', 'seo_indexavel = 1') > 0) {
             self::sitemap(Seo::canonical('/sitemap-ocasioes.xml'), self::maxLastmod($pdo, 'seo_ocasioes', 'updated_at'));
         }
-        if (self::conta($pdo, 'blog_posts', BlogController::WHERE_PUBLICADO) > 0) {
-            self::sitemap(Seo::canonical('/sitemap-blog.xml'), self::maxLastmod($pdo, 'blog_posts', 'updated_at', BlogController::WHERE_PUBLICADO));
+        if (self::conta($pdo, 'blog_posts', BlogController::wherePublicado()) > 0) {
+            self::sitemap(Seo::canonical('/sitemap-blog.xml'), self::maxLastmod($pdo, 'blog_posts', 'updated_at', BlogController::wherePublicado()));
         }
         $lastProd = self::maxLastmod($pdo, 'produtos', 'conteudo_alterado_em');
         for ($i = 1; $i <= $arquivos; $i++) {
@@ -105,7 +105,7 @@ final class SitemapGenerator
 
             case 'blog':
                 try {
-                    $posts = $pdo->query('SELECT slug, updated_at FROM blog_posts WHERE ' . BlogController::WHERE_PUBLICADO . ' ORDER BY publicado_em DESC')->fetchAll();
+                    $posts = $pdo->query('SELECT slug, updated_at FROM blog_posts WHERE ' . BlogController::wherePublicado() . ' ORDER BY publicado_em DESC')->fetchAll();
                 } catch (Throwable $e) {
                     $posts = [];
                 }
@@ -192,7 +192,7 @@ final class SitemapGenerator
         } catch (Throwable $e) {
         }
         try {
-            $bp = $pdo->query('SELECT slug, titulo FROM blog_posts WHERE ' . BlogController::WHERE_PUBLICADO . ' ORDER BY publicado_em DESC LIMIT 20')->fetchAll();
+            $bp = $pdo->query('SELECT slug, titulo FROM blog_posts WHERE ' . BlogController::wherePublicado() . ' ORDER BY publicado_em DESC LIMIT 20')->fetchAll();
             if ($bp) {
                 $l[] = '';
                 $l[] = '## Guias do blog';

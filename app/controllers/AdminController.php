@@ -323,12 +323,14 @@ final class AdminController
                     ':kw' => $t('palavra_chave', 120), ':resumo' => $resumo, ':corpo' => $t('corpo'), ':faq' => $t('faq'),
                     ':skus' => $t('produtos_skus', 5000), ':cats' => $t('categorias', 500), ':capa' => $t('imagem_capa', 512),
                     ':alt' => $t('imagem_alt', 190), ':status' => $status, ':pub' => $publicadoEm,
+                    // updated_at também pelo relógio do PHP (o padrão da coluna usa o fuso do MySQL)
+                    ':upd' => date('Y-m-d H:i:s'),
                 ];
                 if ($id > 0) {
                     $dados[':id'] = $id;
-                    $pdo->prepare('UPDATE blog_posts SET slug=:slug, titulo=:titulo, seo_title=:st, seo_description=:sd, palavra_chave=:kw, resumo=:resumo, corpo=:corpo, faq=:faq, produtos_skus=:skus, categorias=:cats, imagem_capa=:capa, imagem_alt=:alt, status=:status, publicado_em=:pub WHERE id=:id')->execute($dados);
+                    $pdo->prepare('UPDATE blog_posts SET slug=:slug, titulo=:titulo, seo_title=:st, seo_description=:sd, palavra_chave=:kw, resumo=:resumo, corpo=:corpo, faq=:faq, produtos_skus=:skus, categorias=:cats, imagem_capa=:capa, imagem_alt=:alt, status=:status, publicado_em=:pub, updated_at=:upd WHERE id=:id')->execute($dados);
                 } else {
-                    $pdo->prepare('INSERT INTO blog_posts (slug, titulo, seo_title, seo_description, palavra_chave, resumo, corpo, faq, produtos_skus, categorias, imagem_capa, imagem_alt, status, publicado_em) VALUES (:slug,:titulo,:st,:sd,:kw,:resumo,:corpo,:faq,:skus,:cats,:capa,:alt,:status,:pub)')->execute($dados);
+                    $pdo->prepare('INSERT INTO blog_posts (slug, titulo, seo_title, seo_description, palavra_chave, resumo, corpo, faq, produtos_skus, categorias, imagem_capa, imagem_alt, status, publicado_em, updated_at) VALUES (:slug,:titulo,:st,:sd,:kw,:resumo,:corpo,:faq,:skus,:cats,:capa,:alt,:status,:pub,:upd)')->execute($dados);
                 }
                 $noAr = $status === 'publicado' && $publicadoEm !== null && strtotime($publicadoEm) <= time();
                 if ($noAr) {
