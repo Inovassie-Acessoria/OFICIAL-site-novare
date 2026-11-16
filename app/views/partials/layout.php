@@ -37,7 +37,7 @@ $ogImg   = (string) ($meta['og_image'] ?? '') ?: SiteContent::LOGO_PADRAO;
 if (!str_starts_with($ogImg, 'http')) {
     $ogImg = urlAbsoluta($ogImg);
 }
-$ogType  = ($meta['og_type'] ?? 'website') === 'product' ? 'product' : 'website';
+$ogType  = in_array($meta['og_type'] ?? 'website', ['product', 'article'], true) ? $meta['og_type'] : 'website';
 
 // JSON-LD: Organization/WebSite só na home (consolida a entidade), Breadcrumb
 // em toda interna, e o que o controller mandar (Product, ItemList, FAQ).
@@ -178,6 +178,7 @@ $entidade = is_array($entidade) ? $entidade : [];
                     <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= $active ?>" href="<?= url(Seo::urlCategoria($c['categoria'])) ?>"><?= e($c['categoria']) ?></a>
                 <?php endforeach; ?>
                 <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= !empty(q('sustentavel')) ? 'text-primary font-bold border-b-2 border-primary pb-1' : '' ?>" href="<?= url(Seo::urlHub() . '?sustentavel=1') ?>" rel="nofollow">Sustentáveis</a>
+                <a class="text-slate-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap <?= str_starts_with($requestPath, '/blog') ? 'text-primary font-bold border-b-2 border-primary pb-1' : '' ?>" href="<?= url(Seo::urlBlog()) ?>">Blog</a>
             </div>
         </div>
     </nav>
@@ -250,6 +251,7 @@ $entidade = is_array($entidade) ? $entidade : [];
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="https://rastreamento.correios.com.br/app/index.php" target="_blank" rel="noopener">Rastrear Entrega</a></li>
                         <li><a id="whats-footer-time" class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= e(whatsappLink('Olá, tudo bem? Eu vim através do site e gostaria de fazer um orçamento.')) ?>" target="_blank" rel="noopener">Fale com o Nosso Time</a></li>
                         <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url(Seo::urlHub()) ?>">Ver Todos os Produtos</a></li>
+                        <li><a class="text-slate-400 text-xs hover:text-white transition-all uppercase tracking-wider" href="<?= url(Seo::urlBlog()) ?>">Blog</a></li>
                     </ul>
                 </div>
                 <div>

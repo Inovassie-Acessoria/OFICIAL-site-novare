@@ -194,6 +194,7 @@ final class AdminController
             'categorias'   => $pdo->query('SELECT c.*, (SELECT COUNT(*) FROM produtos p WHERE p.categoria = c.nome AND p.ativo = 1) AS total FROM categorias c ORDER BY c.ordem, c.nome')->fetchAll(),
             'faqs'         => $pdo->query('SELECT * FROM seo_faq ORDER BY entidade, entidade_id, ordem, id')->fetchAll(),
             'ocasioes'     => $pdo->query('SELECT * FROM seo_ocasioes ORDER BY id')->fetchAll(),
+            'posts'        => $pdo->query('SELECT * FROM blog_posts ORDER BY COALESCE(publicado_em, updated_at) DESC, id DESC')->fetchAll(),
             'facetas'      => $pdo->query('SELECT * FROM seo_facetas ORDER BY categoria_slug, valor_label')->fetchAll(),
             'redirects'    => $pdo->query('SELECT * FROM seo_redirects ORDER BY id DESC LIMIT 200')->fetchAll(),
             'materiais'    => $pdo->query("SELECT material, COUNT(*) n FROM produtos WHERE ativo = 1 AND material IS NOT NULL AND material <> '' GROUP BY material ORDER BY n DESC")->fetchAll(),
@@ -275,7 +276,7 @@ final class AdminController
 
             case 'ocasiao_salvar':
                 $slug = Seo::slugify((string) ($_POST['slug'] ?? $_POST['titulo'] ?? ''));
-                if ($slug === '' || $slug === 'item' || in_array($slug, ['brindes', 'busca', 'sobre', 'atendimento', 'fidelidade', 'status', 'catalogo', 'produto'], true)) {
+                if ($slug === '' || $slug === 'item' || in_array($slug, ['brindes', 'busca', 'sobre', 'atendimento', 'fidelidade', 'status', 'catalogo', 'produto', 'blog'], true)) {
                     return 'Slug inválido ou reservado.';
                 }
                 $id = (int) ($_POST['id'] ?? 0);
@@ -296,6 +297,48 @@ final class AdminController
             case 'ocasiao_del':
                 $pdo->prepare('DELETE FROM seo_ocasioes WHERE id = :id')->execute([':id' => (int) ($_POST['id'] ?? 0)]);
                 return 'Landing removida.';
+
+            case 'post_salvar':
+                $slug = Seo::slugify((string) (($_POST['slug'] ?? '') !== '' ? $_POST['slug'] : ($_POST['titulo'] ?? '')));
+                if ($slug === '' || $slug === 'item') {
+                    return 'Slug inválido.';
+                }
+                $titulo = $t('titulo', 190);
+                $resumo = $t('resumo');
+                if (!$titulo || !$resumo) {
+                    return 'Título e resumo são obrigatórios.';
+                }
+                $id = (int) ($_POST['id'] ?? 0);
+                $st = $pdo->prepare('SELECT id FROM blog_posts WHERE slug = :s AND id <> :id LIMIT 1');
+                $st->execute([':s' => $slug, ':id' => $id]);
+                if ($st->fetchColumn()) {
+                    return 'Já existe uma matéria com o slug "' . $slug . '".';
+                }
+                $status = ($_POST['status'] ?? '') === 'publicado' ? 'publicado' : 'rascunho';
+                $pub = $t('publicado_em', 20);
+                $pubTs = $pub ? strtotime(str_replace('T', ' ', $pub)) : false;
+                $publicadoEm = $pubTs ? date('Y-m-d H:i:s', $pubTs) : ($status === 'publicado' ? date('Y-m-d H:i:s') : null);
+                $dados = [
+                    ':slug' => $slug, ':titulo' => $titulo, ':st' => $t('seo_title', 70), ':sd' => $t('seo_description', 180),
+                    ':kw' => $t('palavra_chave', 120), ':resumo' => $resumo, ':corpo' => $t('corpo'), ':faq' => $t('faq'),
+                    ':skus' => $t('produtos_skus', 5000), ':cats' => $t('categorias', 500), ':capa' => $t('imagem_capa', 512),
+                    ':alt' => $t('imagem_alt', 190), ':status' => $status, ':pub' => $publicadoEm,
+                ];
+                if ($id > 0) {
+                    $dados[':id'] = $id;
+                    $pdo->prepare('UPDATE blog_posts SET slug=:slug, titulo=:titulo, seo_title=:st, seo_description=:sd, palavra_chave=:kw, resumo=:resumo, corpo=:corpo, faq=:faq, produtos_skus=:skus, categorias=:cats, imagem_capa=:capa, imagem_alt=:alt, status=:status, publicado_em=:pub WHERE id=:id')->execute($dados);
+                } else {
+                    $pdo->prepare('INSERT INTO blog_posts (slug, titulo, seo_title, seo_description, palavra_chave, resumo, corpo, faq, produtos_skus, categorias, imagem_capa, imagem_alt, status, publicado_em) VALUES (:slug,:titulo,:st,:sd,:kw,:resumo,:corpo,:faq,:skus,:cats,:capa,:alt,:status,:pub)')->execute($dados);
+                }
+                $noAr = $status === 'publicado' && $publicadoEm !== null && strtotime($publicadoEm) <= time();
+                if ($noAr) {
+                    $this->indexNowUrl(Seo::canonical(Seo::urlPost($slug)));
+                }
+                return 'Matéria "' . $slug . '" salva como ' . ($noAr ? 'PUBLICADA.' : ($status === 'publicado' ? 'agendada para ' . date('d/m/Y H:i', strtotime((string) $publicadoEm)) . '.' : 'rascunho (veja a prévia logado).'));
+
+            case 'post_del':
+                $pdo->prepare('DELETE FROM blog_posts WHERE id = :id')->execute([':id' => (int) ($_POST['id'] ?? 0)]);
+                return 'Matéria removida.';
 
             case 'faceta_salvar':
                 $catSlug = Seo::slugify((string) ($_POST['categoria_slug'] ?? ''));

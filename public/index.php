@@ -12,6 +12,7 @@ declare(strict_types=1);
  *   /brindes/{categoria}/material/{m}   faceta (promovida = indexável; livre = noindex)
  *   /brindes/produto/{slug}             produto
  *   /{ocasiao}                          landing de ocasião (tabela seo_ocasioes)
+ *   /blog, /blog/{slug}                 blog (tabela blog_posts)
  *   /produto/{sku}, /catalogo           LEGADO -> 301
  */
 
@@ -129,6 +130,14 @@ try {
 
         case (bool) preg_match('#^/brindes/([a-z0-9-]+)$#', $path, $m):
             $controller->categoria($m[1]);
+            break;
+
+        // ---- Blog ----
+        case $path === '/blog':
+            (new BlogController())->index();
+            break;
+        case (bool) preg_match('#^/blog/([a-z0-9][a-z0-9-]*)$#', $path, $m):
+            (new BlogController())->post($m[1]);
             break;
 
         case $path === '/busca':

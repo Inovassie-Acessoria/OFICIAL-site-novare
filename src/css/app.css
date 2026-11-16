@@ -26,6 +26,20 @@
     #gallery-thumbs button.active { border-color: #006590; box-shadow: 0 0 0 2px rgba(0, 101, 144, 0.2); }
     #gallery-thumbs button img { width: 100%; height: 100%; object-fit: contain; }
 
+    /* Corpo das matérias do blog (HTML vindo do painel, sem classes) */
+    .blog-corpo { @apply text-base text-secondary leading-relaxed; }
+    .blog-corpo > * + * { @apply mt-4; }
+    .blog-corpo h2 { @apply text-2xl font-black text-on-surface tracking-tight leading-snug mt-10 scroll-mt-20; }
+    .blog-corpo h3 { @apply text-lg font-bold text-on-surface leading-snug mt-8; }
+    .blog-corpo a { @apply text-primary font-semibold underline underline-offset-2; }
+    .blog-corpo strong, .blog-corpo b { @apply font-bold text-on-surface; }
+    .blog-corpo ul { @apply list-disc pl-6 space-y-2; }
+    .blog-corpo ol { @apply list-decimal pl-6 space-y-2; }
+    .blog-corpo blockquote { @apply border-l-4 border-primary pl-4 italic; }
+    .blog-corpo table { @apply w-full text-sm border-collapse block overflow-x-auto; }
+    .blog-corpo th { @apply text-left font-bold text-on-surface bg-surface-container-low px-3 py-2 border border-surface-container; }
+    .blog-corpo td { @apply px-3 py-2 border border-surface-container align-top; }
+
     /* <details> do FAQ: esconde o marcador nativo */
     details > summary::-webkit-details-marker { display: none; }
 }

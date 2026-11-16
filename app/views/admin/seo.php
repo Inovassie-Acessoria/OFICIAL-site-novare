@@ -9,7 +9,7 @@
  * @var array  $entidade
  * @var array|null $produto  (com 'imagens' e 'avaliacao')
  * @var string $sku_busca
- * @var array  $categorias, $faqs, $ocasioes, $facetas, $redirects, $materiais
+ * @var array  $categorias, $faqs, $ocasioes, $posts, $facetas, $redirects, $materiais
  * @var string $indexnow_key
  * @var array|null $indexnow_ultimo
  * @var array  $imagens  pendentes, feitas, gd
@@ -42,7 +42,7 @@ $taxa = $stats && $stats['avaliados'] ? round($stats['indexaveis'] / $stats['ava
     <?php endif; ?>
 
     <nav class="flex flex-wrap gap-2 text-[11px] font-bold">
-        <?php foreach (['portao' => 'Portão', 'operacional' => 'Operacional', 'entidade' => 'Empresa', 'produto' => 'Produto', 'categorias' => 'Categorias', 'faq' => 'FAQ', 'ocasioes' => 'Ocasiões', 'facetas' => 'Facetas', 'redirects' => 'Redirects', 'indexnow' => 'IndexNow', 'imagens' => 'Imagens'] as $a => $r): ?>
+        <?php foreach (['portao' => 'Portão', 'operacional' => 'Operacional', 'entidade' => 'Empresa', 'produto' => 'Produto', 'categorias' => 'Categorias', 'faq' => 'FAQ', 'ocasioes' => 'Ocasiões', 'blog' => 'Blog', 'facetas' => 'Facetas', 'redirects' => 'Redirects', 'indexnow' => 'IndexNow', 'imagens' => 'Imagens'] as $a => $r): ?>
             <a href="#<?= $a ?>" class="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300"><?= $r ?></a>
         <?php endforeach; ?>
     </nav>
@@ -212,6 +212,43 @@ $taxa = $stats && $stats['avaliados'] ? round($stats['indexaveis'] / $stats['ava
                     <div class="flex gap-2">
                         <a href="/settings-admin/seo?ocasiao_id=<?= (int) $o['id'] ?>#ocasioes" class="<?= $btnSec ?>">Editar</a>
                         <form method="post" action="/settings-admin/seo" onsubmit="return confirm('Remover esta landing?')"><?= $hid('ocasiao_del', 'ocasioes') ?><input type="hidden" name="id" value="<?= (int) $o['id'] ?>"><button class="text-red-300 hover:text-red-200"><span class="material-symbols-outlined text-base">delete</span></button></form>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
+    <!-- ============ BLOG ============ -->
+    <section id="blog" class="<?= $card ?>">
+        <h2 class="text-lg font-black text-white flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-sky-400">article</span> Blog</h2>
+        <p class="text-xs text-slate-400 mb-4">URL = <code>/blog/{slug}</code>. Cole os campos exatamente como vêm no arquivo da matéria. Rascunho e agendada ficam fora do ar e do sitemap; logado no painel você vê a prévia. Capa: foto do 1º SKU (ou a URL de capa, se preenchida).</p>
+        <?php $editP = null; foreach ($posts as $bp) { if ((string) $bp['id'] === (string) q('post_id', '')) { $editP = $bp; } } ?>
+        <form method="post" action="/settings-admin/seo" class="grid sm:grid-cols-3 gap-3 mb-6"><?= $hid('post_salvar', 'blog') ?>
+            <input type="hidden" name="id" value="<?= (int) ($editP['id'] ?? 0) ?>">
+            <label class="text-xs text-slate-300 sm:col-span-2">Título (H1)<input name="titulo" maxlength="190" value="<?= e($editP['titulo'] ?? '') ?>" class="<?= $inp ?> mt-1" required></label>
+            <label class="text-xs text-slate-300">Slug (URL)<input name="slug" value="<?= e($editP['slug'] ?? '') ?>" placeholder="vazio = gerado do título" class="<?= $inp ?> mt-1"></label>
+            <label class="text-xs text-slate-300 sm:col-span-2">Title (até 60 caracteres)<input name="seo_title" maxlength="70" value="<?= e($editP['seo_title'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
+            <label class="text-xs text-slate-300">Palavra-chave principal<input name="palavra_chave" maxlength="120" value="<?= e($editP['palavra_chave'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
+            <label class="text-xs text-slate-300 sm:col-span-3">Meta description (até 155 caracteres)<input name="seo_description" maxlength="180" value="<?= e($editP['seo_description'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
+            <label class="text-xs text-slate-300 sm:col-span-3">Resumo / lead (texto puro, aparece no topo e na lista)<textarea name="resumo" rows="3" class="<?= $inp ?> mt-1" required><?= e($editP['resumo'] ?? '') ?></textarea></label>
+            <label class="text-xs text-slate-300 sm:col-span-3">Corpo (HTML simples: h2, h3, p, ul, ol, table, a, strong)<textarea name="corpo" rows="14" class="<?= $inp ?> mt-1 font-mono"><?= e($editP['corpo'] ?? '') ?></textarea></label>
+            <label class="text-xs text-slate-300 sm:col-span-3">FAQ (blocos separados por linha em branco: 1ª linha pergunta, linhas seguintes resposta)<textarea name="faq" rows="8" class="<?= $inp ?> mt-1"><?= e($editP['faq'] ?? '') ?></textarea></label>
+            <label class="text-xs text-slate-300 sm:col-span-2">SKUs citados (vírgula; o 1º vira capa)<input name="produtos_skus" value="<?= e($editP['produtos_skus'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
+            <label class="text-xs text-slate-300">Categorias relacionadas (slugs, vírgula)<input name="categorias" value="<?= e($editP['categorias'] ?? '') ?>" placeholder="canetas,kits-e-conjuntos" class="<?= $inp ?> mt-1"></label>
+            <label class="text-xs text-slate-300 sm:col-span-2">URL da capa (opcional)<input name="imagem_capa" maxlength="512" value="<?= e($editP['imagem_capa'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
+            <label class="text-xs text-slate-300">Texto alternativo da capa<input name="imagem_alt" maxlength="190" value="<?= e($editP['imagem_alt'] ?? '') ?>" class="<?= $inp ?> mt-1"></label>
+            <label class="text-xs text-slate-300">Status<select name="status" class="<?= $inp ?> mt-1"><option value="rascunho" <?= ($editP['status'] ?? 'rascunho') === 'rascunho' ? 'selected' : '' ?>>Rascunho</option><option value="publicado" <?= ($editP['status'] ?? '') === 'publicado' ? 'selected' : '' ?>>Publicado</option></select></label>
+            <label class="text-xs text-slate-300">Publicar em (vazio = agora)<input type="datetime-local" name="publicado_em" value="<?= !empty($editP['publicado_em']) ? e(date('Y-m-d\TH:i', strtotime((string) $editP['publicado_em']))) : '' ?>" class="<?= $inp ?> mt-1"></label>
+            <div class="text-right self-end"><button class="<?= $btn ?>"><?= $editP ? 'Salvar alterações' : 'Criar matéria' ?></button> <?php if ($editP): ?><a href="/settings-admin/seo#blog" class="<?= $btnSec ?>">Cancelar</a><?php endif; ?></div>
+        </form>
+        <div class="space-y-2 text-xs">
+            <?php foreach ($posts as $bp): ?>
+                <?php $noAr = $bp['status'] === 'publicado' && !empty($bp['publicado_em']) && strtotime((string) $bp['publicado_em']) <= time(); ?>
+                <div class="bg-slate-900 rounded-lg px-4 py-3 flex justify-between gap-3 items-center">
+                    <div><span class="font-bold text-slate-100"><?= e($bp['titulo']) ?></span> <a class="text-sky-400" target="_blank" href="/blog/<?= e($bp['slug']) ?>">/blog/<?= e($bp['slug']) ?></a> <span class="text-slate-500">· <?= $noAr ? 'no ar desde ' . e(date('d/m/Y', strtotime((string) $bp['publicado_em']))) : ($bp['status'] === 'publicado' ? 'agendada ' . e(date('d/m/Y H:i', strtotime((string) $bp['publicado_em']))) : 'rascunho') ?></span></div>
+                    <div class="flex gap-2">
+                        <a href="/settings-admin/seo?post_id=<?= (int) $bp['id'] ?>#blog" class="<?= $btnSec ?>">Editar</a>
+                        <form method="post" action="/settings-admin/seo" onsubmit="return confirm('Remover esta matéria?')"><?= $hid('post_del', 'blog') ?><input type="hidden" name="id" value="<?= (int) $bp['id'] ?>"><button class="text-red-300 hover:text-red-200"><span class="material-symbols-outlined text-base">delete</span></button></form>
                     </div>
                 </div>
             <?php endforeach; ?>

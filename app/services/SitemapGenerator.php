@@ -9,6 +9,7 @@ declare(strict_types=1);
  *   /sitemap-institucional.xml   home + páginas fixas
  *   /sitemap-categorias.xml      categorias + facetas promovidas
  *   /sitemap-ocasioes.xml        landings de ocasião
+ *   /sitemap-blog.xml            /blog + matérias publicadas
  *   /sitemap-produtos-N.xml      produtos, 10.000 por arquivo
  *
  * Por que segmentar: o Search Console mostra cobertura por sitemap, então dá
@@ -41,6 +42,9 @@ final class SitemapGenerator
         if (self::conta($pdo, 'seo_ocasioes', 'seo_indexavel = 1') > 0) {
             self::sitemap(Seo::canonical('/sitemap-ocasioes.xml'), self::maxLastmod($pdo, 'seo_ocasioes', 'updated_at'));
         }
+        if (self::conta($pdo, 'blog_posts', BlogController::WHERE_PUBLICADO) > 0) {
+            self::sitemap(Seo::canonical('/sitemap-blog.xml'), self::maxLastmod($pdo, 'blog_posts', 'updated_at', BlogController::WHERE_PUBLICADO));
+        }
         $lastProd = self::maxLastmod($pdo, 'produtos', 'conteudo_alterado_em');
         for ($i = 1; $i <= $arquivos; $i++) {
             self::sitemap(Seo::canonical("/sitemap-produtos-{$i}.xml"), $lastProd);
@@ -51,7 +55,7 @@ final class SitemapGenerator
     public static function filho(string $tipo, int $pagina = 1): void
     {
         $pdo = Database::connection();
-        if (!in_array($tipo, ['institucional', 'categorias', 'ocasioes', 'produtos'], true)) {
+        if (!in_array($tipo, ['institucional', 'categorias', 'ocasioes', 'blog', 'produtos'], true)) {
             http_response_code(404);
             return;
         }
@@ -94,6 +98,20 @@ final class SitemapGenerator
                 $st = $pdo->query('SELECT slug, updated_at FROM seo_ocasioes WHERE seo_indexavel = 1 ORDER BY id');
                 foreach ($st->fetchAll() as $o) {
                     self::url(Seo::canonical(Seo::urlOcasiao($o['slug'])), $o['updated_at']);
+                }
+                break;
+
+            case 'blog':
+                try {
+                    $posts = $pdo->query('SELECT slug, updated_at FROM blog_posts WHERE ' . BlogController::WHERE_PUBLICADO . ' ORDER BY publicado_em DESC')->fetchAll();
+                } catch (Throwable $e) {
+                    $posts = [];
+                }
+                if ($posts) {
+                    self::url(Seo::canonical(Seo::urlBlog()), $posts[0]['updated_at']);
+                }
+                foreach ($posts as $b) {
+                    self::url(Seo::canonical(Seo::urlPost($b['slug'])), $b['updated_at']);
                 }
                 break;
 
@@ -168,6 +186,17 @@ final class SitemapGenerator
             }
         } catch (Throwable $e) {
         }
+        try {
+            $bp = $pdo->query('SELECT slug, titulo FROM blog_posts WHERE ' . BlogController::WHERE_PUBLICADO . ' ORDER BY publicado_em DESC LIMIT 20')->fetchAll();
+            if ($bp) {
+                $l[] = '';
+                $l[] = '## Guias do blog';
+                foreach ($bp as $b) {
+                    $l[] = sprintf('- [%s](%s)', $b['titulo'], $h . Seo::urlPost($b['slug']));
+                }
+            }
+        } catch (Throwable $e) {
+        }
         echo implode("\n", $l), "\n";
     }
 
@@ -212,10 +241,10 @@ final class SitemapGenerator
         echo "</url>\n";
     }
 
-    private static function maxLastmod(PDO $pdo, string $tabela, string $coluna): ?string
+    private static function maxLastmod(PDO $pdo, string $tabela, string $coluna, string $where = '1=1'): ?string
     {
         try {
-            $v = $pdo->query("SELECT MAX({$coluna}) FROM {$tabela}")->fetchColumn();
+            $v = $pdo->query("SELECT MAX({$coluna}) FROM {$tabela} WHERE {$where}")->fetchColumn();
             return $v ? date('c', strtotime((string) $v)) : null;
         } catch (Throwable $e) {
             return null;

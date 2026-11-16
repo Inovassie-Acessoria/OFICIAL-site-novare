@@ -19,7 +19,7 @@ require_once __DIR__ . '/Seo.php';
  */
 final class SeoMigration
 {
-    public const VERSAO = 3;
+    public const VERSAO = 4; // 4: tabela blog_posts
 
     /**
      * Categorias canônicas: nome (= valor gravado em produtos.categoria) => [slug, aliases].
@@ -179,6 +179,28 @@ final class SeoMigration
                 PRIMARY KEY (id),
                 UNIQUE KEY ux_redirect_origem (origem)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+            'blog_posts' => "CREATE TABLE IF NOT EXISTS blog_posts (
+                id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                slug            VARCHAR(190) NOT NULL,
+                titulo          VARCHAR(190) NOT NULL,              -- H1
+                seo_title       VARCHAR(70)  NULL,
+                seo_description VARCHAR(180) NULL,
+                palavra_chave   VARCHAR(120) NULL,                  -- keyword principal da matéria
+                resumo          TEXT NOT NULL,                      -- lead: aparece no topo e na lista do /blog
+                corpo           MEDIUMTEXT NULL,                    -- HTML simples: h2, h3, p, ul, ol, table, a
+                faq             TEXT NULL,                          -- blocos separados por linha em branco: 1a linha pergunta, resto resposta
+                produtos_skus   TEXT NULL,                          -- SKUs citados (cards no fim da matéria); o 1o vira capa
+                categorias      VARCHAR(500) NULL,                  -- slugs de categoria relacionados
+                imagem_capa     VARCHAR(512) NULL,                  -- opcional: sobrepõe a foto do 1o SKU
+                imagem_alt      VARCHAR(190) NULL,
+                status          ENUM('rascunho','publicado') NOT NULL DEFAULT 'rascunho',
+                publicado_em    DATETIME NULL,
+                updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY ux_post_slug (slug),
+                KEY ix_post_status (status, publicado_em)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
         foreach ($tabelas as $nome => $ddl) {
             if (!self::tabelaExiste($pdo, $nome)) {

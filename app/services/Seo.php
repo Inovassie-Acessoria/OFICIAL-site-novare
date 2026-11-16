@@ -107,6 +107,18 @@ final class Seo
         return '/' . rawurlencode($slug);
     }
 
+    /** /blog: lista de matérias. */
+    public static function urlBlog(): string
+    {
+        return '/blog';
+    }
+
+    /** /blog/{slug}: matéria do blog (tabela blog_posts). */
+    public static function urlPost(string $slug): string
+    {
+        return '/blog/' . rawurlencode($slug);
+    }
+
     // ============================================================
     // CATEGORIAS (tabela categorias, cacheada)
     // ============================================================
@@ -527,6 +539,41 @@ final class Seo
             'numberOfItems'   => count($produtos),
             'itemListElement' => $itens,
         ];
+    }
+
+    /**
+     * BlogPosting da matéria. Autor e publisher apontam para a mesma entidade
+     * Organization da home (@id), o que consolida a autoria no domínio.
+     */
+    public static function schemaBlogPosting(array $post, ?string $imagem, int $palavras): array
+    {
+        $url = self::canonical(self::urlPost((string) $post['slug']));
+        $org = ['@type' => 'Organization', '@id' => self::host() . '/#organization', 'name' => self::MARCA, 'url' => self::host() . '/'];
+        $s = [
+            '@context'         => 'https://schema.org',
+            '@type'            => 'BlogPosting',
+            'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $url],
+            'url'              => $url,
+            'headline'         => self::truncar((string) $post['titulo'], 110),
+            'description'      => self::description((string) ($post['seo_description'] ?: $post['resumo'])),
+            'inLanguage'       => 'pt-BR',
+            'author'           => $org,
+            'publisher'        => $org + ['logo' => ['@type' => 'ImageObject', 'url' => urlAbsoluta(SiteContent::logoUrl())]],
+            'wordCount'        => $palavras,
+        ];
+        if (!empty($post['publicado_em'])) {
+            $s['datePublished'] = date('c', strtotime((string) $post['publicado_em']));
+        }
+        if (!empty($post['updated_at'])) {
+            $s['dateModified'] = date('c', strtotime((string) $post['updated_at']));
+        }
+        if ($imagem) {
+            $s['image'] = [str_starts_with($imagem, 'http') ? $imagem : urlAbsoluta($imagem)];
+        }
+        if (!empty($post['palavra_chave'])) {
+            $s['keywords'] = (string) $post['palavra_chave'];
+        }
+        return $s;
     }
 
     /**
