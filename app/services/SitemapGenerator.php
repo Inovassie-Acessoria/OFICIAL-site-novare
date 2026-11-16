@@ -60,7 +60,9 @@ final class SitemapGenerator
             return;
         }
         self::cabecalho();
-        echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+        // produtos levam a extensão de imagem (só a foto hospedada no nosso domínio)
+        $nsImagem = $tipo === 'produtos' ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : '';
+        echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"' . $nsImagem . '>' . "\n";
 
         switch ($tipo) {
             case 'institucional':
@@ -118,9 +120,10 @@ final class SitemapGenerator
             case 'produtos':
                 $offset = (max(1, $pagina) - 1) * self::POR_ARQUIVO;
                 $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
-                $st = $pdo->query(self::sqlProdutos('slug, sku_pai, conteudo_alterado_em') . ' ORDER BY id LIMIT ' . self::POR_ARQUIVO . " OFFSET {$offset}");
+                $st = $pdo->query(self::sqlProdutos('slug, sku_pai, conteudo_alterado_em, imagem_local') . ' ORDER BY id LIMIT ' . self::POR_ARQUIVO . " OFFSET {$offset}");
                 while ($r = $st->fetch()) {
-                    self::url(Seo::canonical(Seo::urlProduto($r)), $r['conteudo_alterado_em']);
+                    $img = trim((string) ($r['imagem_local'] ?? ''));
+                    self::url(Seo::canonical(Seo::urlProduto($r)), $r['conteudo_alterado_em'], $img !== '' ? urlAbsoluta($img) : null);
                 }
                 $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
                 break;
@@ -151,7 +154,7 @@ final class SitemapGenerator
         $l[] = '> atendimento consultivo por WhatsApp. Atende todo o Brasil. Sem venda online direta: o orçamento é feito com a equipe comercial.';
         $l[] = '';
         $l[] = '## Informação operacional';
-        $l[] = '- Quantidade mínima por pedido: definida por faixa de valor do produto — 200 unidades para itens de menor valor (canetas, chaveiros), 100 ou 50 unidades para itens intermediários e 20 unidades para itens de maior valor (mochilas, garrafas térmicas). O mínimo exato aparece em cada página de produto.';
+        $l[] = '- Quantidade mínima por pedido: definida por faixa de valor do produto: 200 unidades para itens de menor valor (canetas, chaveiros), 100 ou 50 unidades para itens intermediários e 20 unidades para itens de maior valor (mochilas, garrafas térmicas). O mínimo exato aparece em cada página de produto.';
         if ($op['prazo']) {
             $l[] = '- Prazo de produção: ' . Seo::prazoTexto($op['prazo']) . ' após a aprovação da arte';
         }
@@ -173,7 +176,9 @@ final class SitemapGenerator
             if ((int) $c['total'] < 8 || empty($c['slug'])) {
                 continue;
             }
-            $l[] = sprintf('- [%s personalizados](%s): %d modelos', $c['categoria'], $h . Seo::urlCategoriaSlug($c['slug']), (int) $c['total']);
+            // rótulo do painel (gênero e acento certos: "Canetas Personalizadas", "Escritório")
+            $rotulo = trim((string) (Seo::categoriaPorSlug((string) $c['slug'])['rotulo_seo'] ?? '')) ?: $c['categoria'] . ' personalizados';
+            $l[] = sprintf('- [%s](%s): %d modelos', $rotulo, $h . Seo::urlCategoriaSlug($c['slug']), (int) $c['total']);
         }
         try {
             $oc = $pdo->query('SELECT slug, titulo FROM seo_ocasioes WHERE seo_indexavel = 1 ORDER BY id')->fetchAll();
@@ -229,7 +234,7 @@ final class SitemapGenerator
         echo "</sitemap>\n";
     }
 
-    private static function url(string $loc, ?string $lastmod): void
+    private static function url(string $loc, ?string $lastmod, ?string $imagem = null): void
     {
         echo '<url><loc>' . htmlspecialchars($loc, ENT_XML1, 'UTF-8') . '</loc>';
         if ($lastmod) {
@@ -237,6 +242,9 @@ final class SitemapGenerator
             if ($ts) {
                 echo '<lastmod>' . date('c', $ts) . '</lastmod>';
             }
+        }
+        if ($imagem) {
+            echo '<image:image><image:loc>' . htmlspecialchars($imagem, ENT_XML1, 'UTF-8') . '</image:loc></image:image>';
         }
         echo "</url>\n";
     }

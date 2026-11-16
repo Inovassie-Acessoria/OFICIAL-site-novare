@@ -274,6 +274,11 @@ final class CatalogController
         if (!$imagens && !empty($p['imagem_principal'])) {
             $imagens[] = $p['imagem_principal'];
         }
+        // foto já convertida para o nosso domínio vem primeiro: é ela que o
+        // schema Product, o og:image e o Google Imagens devem associar ao site
+        if (!empty($p['imagem_local'])) {
+            array_unshift($imagens, (string) $p['imagem_local']);
+        }
         $imagens = array_values(array_unique($imagens));
 
         $qtd  = (int) ($p['quantidade_minima'] ?? 0) ?: ProductMapper::quantidadeMinima($p['preco_base'] ?? null);
